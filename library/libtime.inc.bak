@@ -1,0 +1,46 @@
+/******************************************************************************
+ * File: lib_template.inc
+ * Description:
+ *      FILL IN DESCRIPTION HERE
+ ******************************************************************************/
+
+#ifndef(Lib_template_Inc_Temp)
+
+#declare Lib_template_Inc_Temp = version;
+#version 3.8;
+
+#ifdef(View_POV_Include_Stack)
+    #debug "including lib_template.inc\n"
+#end                     
+
+//=============================================================================
+// Required Include Files
+//
+// All files required for the library to work should be included here.  There
+// should be no assumption that any given include file is included prior to
+// the library.inc file.
+//
+// Further, to preserve this library as something that can be packaged up to
+// export to news.povray.org, only include standard POV-Ray include files or
+// other files in this library directory.
+//
+
+// End Required Include Files
+//=============================================================================
+
+//=============================================================================
+// Major Library Component
+//
+
+//-----------------------------------------------------------------------------
+// Supporting Library Component
+//
+
+// End Supporting Library Component
+//-----------------------------------------------------------------------------
+
+// End Major Library Component
+//=============================================================================
+
+#version Lib_template_Inc_Temp;
+#end // ifndef(Lib_template_Inc_Temp)
