@@ -1,0 +1,873 @@
+/******************************************************************************
+ * File: garden_wall.inc
+ * Description:
+ *      Garden_wall ".inc" file
+ ******************************************************************************/
+
+#ifndef(Garden_wall_Inc_Temp)
+
+#declare Garden_wall_Inc_Temp = version;
+#version 3.8;
+
+#ifdef(View_POV_Include_Stack)
+    #debug "including garden_wall.inc\n"
+#end                     
+
+//=============================================================================
+// Includes
+//
+
+//-----------------------------------------------------------------------------
+// Standard Includes
+//
+
+// End Standard Includes
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// My Includes
+//
+#include "libscale.inc" 
+#include "libnoise.inc"
+#include "brickwall.inc"
+#include "brickwall_english_layout.inc"
+
+// End My Includes
+//-----------------------------------------------------------------------------
+
+// End Includes
+//=============================================================================
+
+//=============================================================================
+// Garden Wall Specs
+//
+#declare Garden_wall_seed       = seed(20240108);
+#declare Garden_wall_front      = 0;
+#declare Garden_wall_side       = 1;                                                               
+#declare Garden_wall_brick_spec = Brickwall_us_modular_spec;
+#declare Garden_wall_brick_rnd  = Math_Scale(SCALE_INCH, 1/16);
+#declare Garden_wall_mortar_inset   = Math_Scale(SCALE_INCH, 1/16);
+#declare Garden_wall_jitter_size    = Math_Scale(SCALE_INCH, <1/16, 1/16, 1/8>);
+#declare Garden_wall_jitter_scale   = <1,1,1>/Garden_wall_brick_spec.brick_sz;
+#declare Garden_wall_jitter_noise_fn    = Noise_create2(<0,0,0>, f_snoise3d, 7763*<rand(Garden_wall_seed),rand(Garden_wall_seed),rand(Garden_wall_seed)>, Garden_wall_jitter_scale, 1)
+
+#declare Garden_wall_front_length   = 20*Garden_wall_brick_spec.unit_sz.x - Garden_wall_brick_spec.mortar_sz;
+#declare Garden_wall_side_length    = 10*Garden_wall_brick_spec.unit_sz.x - Garden_wall_brick_spec.mortar_sz;
+#declare Garden_wall_courses        = 10;
+#declare Garden_wall_half_bricks    = 2;
+ 
+#declare Garden_wall_front_spec                 = Brickwall_wall_spec_create(Garden_wall_front_length, Garden_wall_courses, Garden_wall_half_bricks);
+#declare Garden_wall_front_spec.left_end_type   = Brickwall_end_type_corner;
+#declare Garden_wall_side_spec                  = Brickwall_wall_spec_create(Garden_wall_side_length, Garden_wall_courses, Garden_wall_half_bricks);
+#declare Garden_wall_side_spec.right_end_type   = Brickwall_end_type_corner;
+
+#declare Garden_wall_front_size                 = <Garden_wall_front_length, Garden_wall_courses*Garden_wall_brick_spec.unit_sz.y, Garden_wall_brick_spec.unit_sz.x>;
+#declare Garden_wall_side_size                  = <Garden_wall_side_length, Garden_wall_courses*Garden_wall_brick_spec.unit_sz.y, Garden_wall_brick_spec.unit_sz.x>;
+
+#declare Garden_wall_front_layout   = Brickwall_english_layout_create(Garden_wall_front_spec,Garden_wall_brick_spec,0);
+#declare Garden_wall_side_layout    = Brickwall_english_layout_create(Garden_wall_side_spec,Garden_wall_brick_spec,1);
+
+#declare Garden_wall_front_jitter   = Brickwall_jitter_create(Garden_wall_front_layout, Garden_wall_jitter_size, Garden_wall_jitter_noise_fn);
+#declare Garden_wall_side_jitter    = Brickwall_jitter_create(Garden_wall_side_layout, Garden_wall_jitter_size, Garden_wall_jitter_noise_fn);
+
+// End Garden Wall Specs
+//=============================================================================
+
+//=============================================================================
+// Garden Wall Bricks
+//
+//      Brickwall brick shape used in the garden wall
+//
+                                                               
+//-----------------------------------------------------------------------------
+// Garden_wall_brick_shape()
+//
+#macro Garden_wall_brick_shape()
+
+    // Create the brick shape as a rounded brick with noisy rounded edges
+    //
+    #local _rnd_noise_size  = Math_Scale(SCALE_INCH, 1/32);
+    #local _rnd_noise_scale = <1,1,1>/Math_Scale(SCALE_INCH, 1/8);
+    #local _rnd_noise_fn    = Noise_create2(<0,0,0>, f_snoise3d, 1197553*<0.1,0.2,0.3>, _rnd_noise_scale, _rnd_noise_size)
+    
+    #local _gwbs_rnd_fn = function(x,y,z) {
+        Garden_wall_brick_rnd + _rnd_noise_fn(x,y,z)
+    }
+    
+    #local _gwbs_shape  = Brickwall_variable_rounded_brick_shape_create(Garden_wall_brick_spec,_gwbs_rnd_fn);
+    
+    // Now add in surface texture
+    //
+    #local _bumps_sz   = Math_Scale(SCALE_INCH, 1/16);
+    #local _bumps_pfn  = function {
+        pigment {
+            granite
+            color_map {
+                [0.0 rgb 0]
+                [0.5 rgb 0]
+                [1.0 rgb 1]
+            }
+            scale _bumps_sz*<1,10,1>
+        }
+    }
+    
+    #local _granules_sz     = Math_Scale(SCALE_INCH, 1/32);            
+    #local _granules_pfn    = function {
+        pigment {
+            bumps
+            color_map {
+                [0.0 rgb 0]
+                [1.0 rgb 1]
+            }
+            scale 0.5*_granules_sz 
+        }
+    }
+    
+    // For true variability, should include the Layout for the wall and then use the origin functions to find an
+    // offset into the bumps fn based on randomizing the origin and adding the offset.
+    //
+    #local _noise_fn    = function(x,y,z) {
+        _bumps_pfn(x,y,z).gray*_bumps_sz + _granules_pfn(x,y,z).gray*_granules_sz
+    }
+    
+    Brickwall_brick_shape_add_noise(_gwbs_shape,_noise_fn)
+    
+#end
+
+// End Garden_wall_brick_shape
+//----------------------------------------------------------------------------- 
+
+//-----------------------------------------------------------------------------
+// Garden_wall_joint_spec()
+//
+#macro Garden_wall_joint_spec()
+    #local _joint_depth             = Math_Scale(SCALE_INCH, 1/8);
+    #local _joint_fn                = Mortar_joint_concave_fn(_joint_depth,Garden_wall_brick_spec.mortar_sz)
+    #local _joint_noise_sz          = Math_Scale(SCALE_INCH, 1/16);
+    #local _joint_noise_pfn         = function {
+        pigment {
+            wrinkles
+            color_map {
+                [0.0 rgb 0]
+                [1.0 rgb 1]
+            }
+            scale Math_Scale(SCALE_INCH, <2, 1/16, 1/16>)
+            translate 33297*<rand(Garden_wall_seed), rand(Garden_wall_seed), rand(Garden_wall_seed)>
+        }
+    }
+    #local _noisy_joint_fn          = function(x,y,z,xoff,yoff,zoff) {
+        _joint_fn(x,y,z,xoff,yoff,zoff) - _joint_noise_pfn(x,y,z).gray*_joint_noise_sz
+    }                
+    #local _joint                   = Mortar_joint_create(_joint_depth,_noisy_joint_fn);
+    #local _joint_spec              = Mortar_joint_spec_create(_joint,_joint,_joint);
+    #local _joint_spec.back_joints  = false;
+    
+    _joint_spec
+    
+#end
+
+// End Garden_wall_joint_spec
+//-----------------------------------------------------------------------------
+
+// End Garden Wall Bricks
+//=============================================================================
+
+//=============================================================================
+// Garden Wall Textures and Materials
+//
+
+//----------------------------------------------------------------------------- 
+// Garden_wall_brick_dark_pigment()
+//
+#macro Garden_wall_brick_dark_pigment()
+    #local _p   = pigment {
+        granite
+        color_map {
+            [0.0 rgb <0.1, 0.02, 0.01>]
+            [0.5 rgb <0.09, 0.015, 0.005>]
+            [1.0 rgb <0.05, 0.015, 0.005>]
+        }
+    }
+    
+    _p        
+#end
+
+// End Garden_wall_brick_dark_pigment
+//----------------------------------------------------------------------------- 
+
+//----------------------------------------------------------------------------- 
+// Garden_wall_brick_medium_pigment()
+//
+#macro Garden_wall_brick_medium_pigment()
+    #local _p   = pigment {
+        granite
+        color_map {
+            [0.0 rgb <0.25, 0.05, 0.025>]
+            [0.5 rgb <0.15, 0.025, 0.0125>]
+            [1.0 rgb <0.1, 0.0125, 0.005>]
+        }
+    }
+    
+    _p        
+#end
+
+// End Garden_wall_brick_medium_pigment
+//----------------------------------------------------------------------------- 
+
+//----------------------------------------------------------------------------- 
+// Garden_wall_brick_light_pigment()
+//
+#macro Garden_wall_brick_light_pigment()
+    #local _p   = pigment {
+        granite
+        color_map {
+            [0.0 rgb <0.35, 0.1, 0.05>]
+            [0.5 rgb <0.25, 0.05, 0.025>]
+            [1.0 rgb <0.15, 0.025, 0.01>]
+        }
+    }
+    
+    _p        
+#end
+
+// End Garden_wall_brick_light_pigment
+//----------------------------------------------------------------------------- 
+
+//----------------------------------------------------------------------------- 
+// Garden_wall_bricks_palette_pigment()
+//
+#macro Garden_wall_bricks_palette_pigment()
+    #local _p   = pigment {
+        bumps
+        color_map {
+            [0.0 rgb 0]
+            [1.0 rgb 1]
+        }
+        warp {
+            turbulence 0.5
+            lambda 0.5
+            omega 0.2
+        }    
+        scale 8*Garden_wall_brick_spec.brick_sz
+        translate 7597*<rand(Garden_wall_seed),rand(Garden_wall_seed),rand(Garden_wall_seed)>
+    }
+    
+    _p
+#end
+
+// End Garden_wall_bricks_palette_pigment
+//----------------------------------------------------------------------------- 
+
+//----------------------------------------------------------------------------- 
+// Garden_wall_bricks_palette_fn()
+//
+#macro Garden_wall_bricks_palette_fn()
+    #local _palette_pfn = function {
+        pigment { Garden_wall_bricks_palette_pigment() }
+    }
+    
+    function(x,y,z) {
+        _palette_pfn(x,y,z).gray
+    }                
+#end
+
+// End Garden_wall_bricks_palette_fn
+//----------------------------------------------------------------------------- 
+
+//-----------------------------------------------------------------------------
+// Garden_wall_bricks_pigment_map()
+//
+#macro Garden_wall_bricks_pigment_map()
+    #local _p_dark      = pigment { Garden_wall_brick_dark_pigment() }
+    #local _p_medium    = pigment { Garden_wall_brick_medium_pigment() }
+    #local _p_light     = pigment { Garden_wall_brick_light_pigment() }
+    
+    #local _pm  = pigment_map {
+        [0.0 _p_medium]
+        [0.1 _p_medium]
+        [0.3 _p_dark]
+        [0.4 _p_dark]
+        [0.9 _p_light]
+        [1.0 _p_light]
+    }
+    
+    _pm
+#end
+
+// End Garden_wall_bricks_pigment_map
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_bricks_texture(Layout,Jitter)
+//
+#macro Garden_wall_bricks_texture(Layout,Jitter)
+    #local _gwbt_palette_fn             = Garden_wall_bricks_palette_fn()
+    #local _noise_scale                 = <1,1,1>/Garden_wall_brick_spec.brick_sz;
+    #local _noise_fn                    = Noise_create2(<0,0,0>, f_snoise3d, 88453*<rand(Garden_wall_seed),rand(Garden_wall_seed),rand(Garden_wall_seed)>, _noise_scale, 1)
+    
+    #local _gwbt_palette_selector_fn    = Brickwall_palette_selector_fn(Layout,_noise_fn,2*Garden_wall_front_size,_gwbt_palette_fn)
+    
+    #local _t_bricks    = texture {
+        pigment {
+            function {
+                _gwbt_palette_selector_fn(
+                    x + Jitter.jitter_x_fn(x,y,z),
+                    y + Jitter.jitter_y_fn(x,y,z),
+                    z + Jitter.jitter_z_fn(x,y,z)
+                )    
+            }
+            pigment_map { Garden_wall_bricks_pigment_map() }
+        }
+    }
+    ;
+    
+    _t_bricks
+    
+#end
+
+// End Garden_wall_bricks_texture
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_brick_finish()
+//
+#macro Garden_wall_brick_finish()
+    #local _t_finish    = texture {
+        pigment { color rgbf 1 }
+        normal {
+            bumps 0.01
+            scale Math_Scale(SCALE_INCH, 1/32)
+        }
+        finish {
+            fresnel
+            specular albedo 1.0
+            roughness 0.5
+            diffuse albedo 1.0
+            brilliance 10
+        }
+    };
+    
+    _t_finish
+                
+#end
+
+// End Garden_wall_brick_finish
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_dirt_overlays()
+//
+#macro Garden_wall_dirt_overlays()
+    #local _t_dirt      = texture {
+        pigment {
+            bozo
+            color_map {
+                [0.0 rgbt <0.01, 0.01, 0.01, 1>]
+                [1.0 rgbt <0.01, 0.01, 0.01, 0.1>]
+            }
+            scale Math_Scale(SCALE_FEET, 2)
+        }
+    }
+    ;
+    
+    _t_dirt
+    
+#end
+
+// End Garden_wall_dirt_overlays
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_mortar_texture()
+//
+#macro Garden_wall_mortar_texture()
+    #local _t   = texture {
+        pigment {
+            granite
+            color_map {
+                [0.0 rgb 0.25]
+                [1.0 rgb 0.125]
+            }
+            scale Math_Scale(SCALE_INCH, 1/8)
+        }        
+    }
+    ;
+    
+    _t
+#end
+
+// End Garden_wall_mortar_texture
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_mortar_finish()
+//
+#macro Garden_wall_mortar_finish()
+    #local _t_finish    = texture {
+        pigment { color rgbf 1 }
+        normal {
+            bumps 0.01
+            scale Math_Scale(SCALE_INCH, 1/32)
+        }
+        finish {
+            fresnel
+            specular albedo 1.0
+            roughness 0.1
+            diffuse albedo 1.0
+            brilliance 4
+        }
+    };
+    
+    _t_finish
+                
+#end
+
+// End Garden_wall_mortar_finish
+//-----------------------------------------------------------------------------
+
+// End Garden Wall Textures and Materials
+//=============================================================================
+
+//=============================================================================
+// Garden Wall Layouts
+//
+
+//-----------------------------------------------------------------------------
+// Garden_wall_front_bricks_material()
+//
+#macro Garden_wall_front_bricks_material()
+    #local _m   = material {
+        texture { Garden_wall_bricks_texture(Garden_wall_front_layout, Garden_wall_front_jitter) }
+        //texture { Garden_wall_dirt_overlays() }
+        texture { Garden_wall_brick_finish() }
+        interior { ior 1.5 }
+    }
+    
+    _m
+#end
+
+// End Garden_wall_front_bricks_material
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_front_mortar_material()
+//
+#macro Garden_wall_front_mortar_material()
+    #local _m   = material {
+        texture { Garden_wall_mortar_texture() }
+        texture { Garden_wall_dirt_overlays() }
+        texture { Garden_wall_mortar_finish() }
+        interior { ior 1.5 }
+    }
+    
+    _m
+#end
+
+// End Garden_wall_front_mortar_material
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_side_bricks_material()
+//
+#macro Garden_wall_side_bricks_material()
+    #local _m   = material {
+        texture { Garden_wall_bricks_texture(Garden_wall_side_layout, Garden_wall_side_jitter) }
+        texture { Garden_wall_dirt_overlays() rotate <0, -90, 0> translate <Garden_wall_side_size.x, 0, 0> }
+        texture { Garden_wall_brick_finish() }
+        interior { ior 1.5 }
+    }
+    
+    _m
+#end
+
+// End Garden_wall_side_bricks_material
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_side_mortar_material()
+//
+#macro Garden_wall_side_mortar_material()
+    #local _m   = material {
+        texture { Garden_wall_mortar_texture() }
+        texture { Garden_wall_dirt_overlays() rotate <0, -90, 0> translate <Garden_wall_side_size.x, 0, 0> }
+        texture { Garden_wall_mortar_finish() }
+        interior { ior 1.5 }
+    }
+    
+    _m
+#end
+
+// End Garden_wall_side_mortar_material
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_front_brick_cracks_pigment()
+//
+#macro Garden_wall_front_brick_cracks_pigment()
+    #local _p   = pigment {
+        marble
+        color_map {
+            [0.0 rgb 0]
+            [0.98 rgb 0]
+            [1.0 rgb 1]
+        }
+        warp {
+            turbulence 0.75
+            lambda 1.7
+            omega 0.6
+        }
+        #local _s   = 10;
+        scale _s warp { turbulence 0.5 } scale 1/_s
+        rotate <0, 0, -60>         
+        scale <0.25, 1, 1>*Garden_wall_front_size
+        translate <-1.5*Garden_wall_brick_spec.unit_sz.x, 0, 0>
+    }
+    
+    _p
+#end
+
+// End Garden_wall_front_brick_cracks_pigment
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_front_brick_shape(Cracks)
+//
+#macro Garden_wall_front_brick_shape(Cracks)
+    #if (Cracks)
+        #local _gwbs_shape              = Garden_wall_brick_shape();
+        #local _gwbs_front_cracks_pfn         = function {
+            pigment { Garden_wall_front_brick_cracks_pigment() }
+        }
+        #local _gwbs_side_cracks_pfn    = function {
+            pigment { Garden_wall_side_brick_cracks_pigment() translate <-Garden_wall_side_size.x, 0, 0> rotate <0, 90, 0> }
+        }
+        #local _gwbs_cracks_fn          = function(x,y,z) {
+            max(
+                _gwbs_front_cracks_pfn(x,y,z).gray,
+                _gwbs_side_cracks_pfn(x,y,z).gray
+            )
+        }                
+        #local _gwbs_cracked_shape_fn   = function(x,y,z,xoff,yoff,zoff) {
+            select(_gwbs_cracks_fn(x,y,z) - 0.5,
+                _gwbs_shape.brick_fn(x,y,z,xoff,yoff,zoff),
+                2
+            )    
+        }
+        Brickwall_brick_shape_create(_gwbs_shape.brick_spec, _gwbs_cracked_shape_fn)            
+    #else
+        Garden_wall_brick_shape()
+    #end
+#end
+
+// End Garden_wall_front_brick_shape
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_front_bricks_shape_fn(Cracks)
+//
+#macro Garden_wall_front_bricks_shape_fn(Cracks)
+    #local _gwfbs_shape_fn  = Brickwall_english_bricks_shape_fn(Garden_wall_front_layout,Garden_wall_front_brick_shape(true))
+    function(x,y,z) {
+        _gwfbs_shape_fn(
+            x + Garden_wall_front_jitter.jitter_x_fn(x,y,z),
+            y + Garden_wall_front_jitter.jitter_y_fn(x,y,z),
+            z + Garden_wall_front_jitter.jitter_z_fn(x,y,z)
+        )    
+    }
+#end
+
+// End Garden_wall_front_bricks_shape_fn
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_front_bricks()
+//
+#macro Garden_wall_front_bricks()
+    #local _gwfb_shape_fn       = Garden_wall_front_bricks_shape_fn(true)
+    
+    #local _lbounds             = <0, 0, 0> - Garden_wall_jitter_size;
+    #local _ubounds             = Garden_wall_front_size + Garden_wall_jitter_size;
+    
+    #local _bricks  = isosurface {
+        function {
+            _gwfb_shape_fn(x,y,z)
+        }
+        threshold 0
+        accuracy 0.1
+        max_gradient 300
+        contained_by { box { _lbounds, _ubounds } }
+        material { Garden_wall_front_bricks_material() }     
+    }
+    
+    _bricks
+#end
+
+// End Garden_wall_front_bricks
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_front_mortar()
+//
+#macro Garden_wall_front_mortar()
+    #local _gwfm_bricks_shape_fn    = Garden_wall_front_bricks_shape_fn(false)
+    #local _mortar_block            = Brickwall_english_mortar_block_create(Garden_wall_front_layout,Garden_wall_mortar_inset);
+    #local _mcracks_size            = Math_Scale(SCALE_INCH, 1/8);
+    #local _mcracks_scale           = <1,1,1>/Math_Scale(SCALE_INCH, 1);
+    #local _mcracks_fn              = Noise_create2(<0,0,0>, f_agate, 32977*<.15, 0.01, .11>, _mcracks_scale, _mcracks_size)
+    
+    #local _joint_spec              = Garden_wall_joint_spec();
+    
+    #local _gwfm_shape_fn           = Brickwall_english_mortar_shape_fn(Garden_wall_front_layout,_mortar_block,_joint_spec,_gwfm_bricks_shape_fn)
+    #local _gwfm_front_cracks_pfn = function {
+        pigment { Garden_wall_front_brick_cracks_pigment() }
+    }
+    #local _gwfm_side_cracks_pfn    = function {
+        pigment { Garden_wall_side_brick_cracks_pigment() translate <-Garden_wall_side_size.x, 0, 0> rotate <0, 90, 0> }
+    }
+    #local _gwfm_cracks_fn  = function(x,y,z) {
+        max(
+            _gwfm_front_cracks_pfn(x,y,z).gray,
+            _gwfm_side_cracks_pfn(x,y,z).gray
+        )    
+    }    
+    
+    #local _noise_sz    = Math_Scale(SCALE_INCH, 1/16);
+    #local _noise_scale = <1,1,1>/Math_Scale(SCALE_INCH, 1/16);
+    #local _noise_fn    = Noise_create2(<0,0,0>, f_wrinkles, 77592*<0.1,-0.1,0.7>, _noise_scale, _noise_sz)
+    
+    #local _gwfm_cracked_shape_fn   = function(x,y,z) {
+        select(_gwfm_cracks_fn(x,y,z) - 0.5,
+            _gwfm_shape_fn(x,y,z),
+            2
+        ) + _noise_fn(x,y,z)    
+    }
+    
+    #local _lbounds             = <0, 0, 0> - (Garden_wall_jitter_size + _noise_sz);
+    #local _ubounds             = Garden_wall_front_size + (Garden_wall_jitter_size + _noise_sz);
+    
+    #local _mortar  = isosurface {
+        function {
+            _gwfm_cracked_shape_fn(x,y,z) + _mcracks_fn(x,y,z)
+        }
+        threshold 0
+        accuracy 0.1
+        max_gradient 300
+        contained_by { box { _lbounds, _ubounds } }
+        material { Garden_wall_front_mortar_material() }   
+    }
+    
+    _mortar
+#end
+
+// End Garden_wall_front_mortar
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_front_object()
+//
+#macro Garden_wall_front_object()
+    #local _front   = union {
+        object { Garden_wall_front_bricks() }
+        object { Garden_wall_front_mortar() }
+    }
+    
+    _front
+#end
+
+// End Garden_wall_front_object
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_side_brick_cracks_pigment()
+//
+#macro Garden_wall_side_brick_cracks_pigment()
+    #local _p   = pigment {
+        marble
+        color_map {
+            [0.0 rgb 0]
+            [0.98 rgb 0]
+            [1.0 rgb 1]
+        }
+        warp {
+            turbulence 0.75
+            lambda 1.7
+            omega 0.6
+        }
+        #local _s   = 10;
+        scale _s warp { turbulence 0.5 } scale 1/_s
+        scale <0.25, 1, 1>*Garden_wall_side_size
+        rotate <0, 0, 30>
+        translate <1.25*Garden_wall_side_size.x, 0, 0>         
+    }
+    
+    _p
+#end
+
+// End Garden_wall_side_brick_cracks_pigment
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_side_brick_shape(Cracks)
+//
+#macro Garden_wall_side_brick_shape(Cracks)
+    #if (Cracks)
+        #local _gwbs_shape              = Garden_wall_brick_shape();
+        #local _gwbs_side_cracks_pfn    = function {
+            pigment { Garden_wall_side_brick_cracks_pigment() }
+        }
+        #local _gwbs_front_cracks_pfn   = function {
+            pigment { Garden_wall_front_brick_cracks_pigment() rotate <0, -90, 0> translate <Garden_wall_side_size.x, 0, 0> }
+        }
+        #local _gwbs_cracks_fn  = function(x,y,z) {
+            max(
+                _gwbs_side_cracks_pfn(x,y,z).gray,
+                _gwbs_front_cracks_pfn(x,y,z).gray
+            )    
+        }        
+        #local _gwbs_cracked_shape_fn   = function(x,y,z,xoff,yoff,zoff) {
+            select(_gwbs_cracks_fn(x,y,z) - 0.5,
+                _gwbs_shape.brick_fn(x,y,z,xoff,yoff,zoff),
+                2
+            )    
+        }
+        Brickwall_brick_shape_create(_gwbs_shape.brick_spec, _gwbs_cracked_shape_fn)            
+    
+    #else
+        Garden_wall_brick_shape()
+    #end
+#end
+
+// End Garden_wall_side_brick_shape
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_side_bricks_shape_fn(Cracks)
+//
+#macro Garden_wall_side_bricks_shape_fn(Cracks)
+    #local _gwsbs_shape_fn  = Brickwall_english_bricks_shape_fn(Garden_wall_side_layout,Garden_wall_side_brick_shape(true))
+    function(x,y,z) {
+        _gwsbs_shape_fn(
+            x + Garden_wall_side_jitter.jitter_x_fn(x,y,z),
+            y + Garden_wall_side_jitter.jitter_y_fn(x,y,z),
+            z + Garden_wall_side_jitter.jitter_z_fn(x,y,z)
+        )    
+    }
+#end
+
+// End Garden_wall_side_bricks_shape_fn
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_side_bricks()
+//
+#macro Garden_wall_side_bricks()
+    #local _gwsb_shape_fn       = Garden_wall_side_bricks_shape_fn(true)
+    
+    #local _lbounds             = <0, 0, 0> - Garden_wall_jitter_size;
+    #local _ubounds             = Garden_wall_side_size + Garden_wall_jitter_size;
+    
+    #local _bricks  = isosurface {
+        function {
+            _gwsb_shape_fn(x,y,z)
+        }
+        threshold 0
+        accuracy 0.1
+        max_gradient 300
+        contained_by { box { _lbounds, _ubounds } }
+        material { Garden_wall_side_bricks_material() }     
+    }
+    
+    _bricks
+#end
+
+// End Garden_wall_side_bricks
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_side_mortar()
+//
+#macro Garden_wall_side_mortar()
+    #local _gwfm_bricks_shape_fn    = Garden_wall_side_bricks_shape_fn(false)
+    #local _mortar_block            = Brickwall_english_mortar_block_create(Garden_wall_side_layout,Garden_wall_mortar_inset);
+    #local _joint_spec              = Garden_wall_joint_spec();
+    
+    #local _mcracks_size            = Math_Scale(SCALE_INCH, 1/8);
+    #local _mcracks_scale           = <1,1,1>/Math_Scale(SCALE_INCH, 1);
+    #local _mcracks_fn              = Noise_create2(<0,0,0>, f_agate, 32977*<.15, 0.01, .11>, _mcracks_scale, _mcracks_size)
+    
+    #local _gwfm_shape_fn           = Brickwall_english_mortar_shape_fn(Garden_wall_side_layout,_mortar_block,_joint_spec,_gwfm_bricks_shape_fn)
+    #local _gwfm_cracks_pfn = function {
+        pigment { Garden_wall_side_brick_cracks_pigment() }
+    }
+    
+    #local _noise_sz    = Math_Scale(SCALE_INCH, 1/16);
+    #local _noise_scale = <1,1,1>/Math_Scale(SCALE_INCH, 1/16);
+    #local _noise_fn    = Noise_create2(<0,0,0>, f_wrinkles, 1197*<0.1,-0.1,0.7>, _noise_scale, _noise_sz)
+    
+    #local _gwfm_cracked_shape_fn   = function(x,y,z) {
+        select(_gwfm_cracks_pfn(x,y,0).gray - 0.5,
+            _gwfm_shape_fn(x,y,z),
+            2
+        ) + _noise_fn(x,y,z)    
+    }
+    
+    #local _lbounds             = <0, 0, 0> - (Garden_wall_jitter_size + _noise_sz);
+    #local _ubounds             = Garden_wall_side_size + (Garden_wall_jitter_size + _noise_sz);
+    
+    #local _mortar  = isosurface {
+        function {
+            _gwfm_cracked_shape_fn(x,y,z) + _mcracks_fn(x,y,z)
+        }
+        threshold 0
+        accuracy 0.1
+        max_gradient 300
+        contained_by { box { _lbounds, _ubounds } }
+        material { Garden_wall_side_mortar_material() }   
+    }
+    
+    _mortar
+#end
+
+// End Garden_wall_side_mortar
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_side_object()
+//
+#macro Garden_wall_side_object()
+    #local _side   = union {
+        object { Garden_wall_side_bricks() }
+        object { Garden_wall_side_mortar() }
+    }
+    
+    _side
+#end
+
+// End Garden_wall_side_object
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Garden_wall_object()
+//
+#macro Garden_wall_object()
+    #local _wall    = union {
+        object { Garden_wall_front_object() }
+        object {
+            Garden_wall_side_object()
+            translate <-Garden_wall_side_size.x, 0, 0>
+            rotate <0, 90, 0>
+        }    
+    }
+    
+    _wall
+#end
+
+// End Garden_wall_object
+//-----------------------------------------------------------------------------
+
+// End Garden Wall Layouts
+//=============================================================================
+
+#version Garden_wall_Inc_Temp;
+
+#end // ifndef (Garden_wall_Inc_Temp)

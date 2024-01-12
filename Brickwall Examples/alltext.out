@@ -1,0 +1,258 @@
+Parser Options
+  Input file: C:\Users\cr2851\Documents\POV-Ray\v3.8-beta\myscenes\Brickwall
+ Examples\garden_wall.pov (compatible to version 3.80)
+  Remove bounds........On 
+  Split unions.........Off
+  Library paths:
+    C:\Windows\Fonts
+    C:\Users\cr2851\AppData\Local\Microsoft\Windows\Fonts
+    C:\Users\cr2851\Documents\POV-Ray\v3.8-beta\tools
+    C:\Users\cr2851\Documents\POV-Ray\v3.8-beta\tools\Isowood03
+    C:\Users\cr2851\Documents\POV-Ray\v3.8-beta\tools\Isocsg07
+    C:\Users\cr2851\Documents\POV-Ray\v3.8-beta\tools\LightsysIV
+    C:\Users\cr2851\Documents\POV-Ray\v3.8-beta\tools\POVCollection
+    C:\Users\cr2851\Documents\POV-Ray\v3.8-beta\tools\POVCollection\POV-RC3Metal
+-2.0
+    C:\Users\cr2851\Documents\POV-Ray\v3.8-beta\tools\POVCollection\RC3Wood
+    C:\Users\cr2851\Documents\POV-Ray\v3.8-beta\tools\POVCollection\RopeSys
+    C:\Users\cr2851\Documents\POV-Ray\v3.8-beta\tools\include
+    C:\Users\cr2851\Documents\POV-Ray\v3.8-beta\myscenes\library
+    C:\Users\cr2851\Documents\POV-Ray\v3.8-beta\myscenes\include
+    C:\Users\cr2851\Documents\POV-Ray\v3.8-beta\myscenes\earth
+    C:\Users\cr2851\Documents\POV-Ray\v3.8-beta\include
+  Clock value:    0.000  (Animation off)
+Image Output Options
+  Image resolution.....1024 by 768 (rows 1 to 768, columns 1 to 1024).
+  Output file..........C:\Users\cr2851\Documents\POV-Ray\v3.8-beta\myscenes\Bric
+kwall Examples\garden_wall.png, 24 bpp PNG
+  Dithering............Off
+  Graphic display......On  (gamma: sRGB transfer function)
+  Mosaic preview.......Off
+  Continued trace......Off
+Information Output Options
+  All Streams to console..........On 
+  Debug Stream to console.........On 
+  Fatal Stream to console.........On 
+  Render Stream to console........On 
+  Statistics Stream to console....On 
+  Warning Stream to console.......On 
+including transforms.inc
+including arrays.inc
+including libtime.inc
+including garden_wall.inc
+including libnoise.inc
+including brickwall.inc
+including brickwall_bricks.inc
+including libisoshapes.inc
+including brickwall_mortar.inc
+including brickwall_english_layout.inc
+including sky.inc
+including libskydome.inc
+including liblights.inc
+Including CIE.inc
+Including espd_cie_standard.inc
+Including espd_lightsys.inc
+including libsun.inc
+including libcolors.inc
+including colors.inc
+Using photons
+_sunpos=<-217653.650,792847.821,-569228.620>
+_sunaxis=<-52.452,200.925,0.000>
+_currentts=0.915
+_currentsolarpos=<0.000,0.793,0.609>
+_normsunpos=<0.000,0.793,0.609>
+_suncolorXYZ=<34.787,36.145,49.213>
+_zenithcolor=<11.264,11.459,21.131>
+_horizoncolor=<0.078,0.079,0.087>
+flIntensity=0.036
+Warning: Tesselation ended while tesselation wasn't complete : maximum number of
+ vertices is met.
+Sky_dome faces generated=19200
+Sun_light: _sun_color=<1.000,1.000,1.000>
+Sun_light: _sun_pos=<-217653.432,792847.028,-569228.050>
+_size=<50000.000,50000.000,50000.000>
+_isect=<9705.566,13216.709,-18871.157>
+_loc=<18724.992,25499.056,-36408.206>
+_size=<67852.695,74626.758,85535.914>
+_isect=<6052.091,17783.280,16496.277>
+_loc=<11462.653,33681.510,31243.929>
+_size=<67852.695,87177.367,120275.703>
+_isect=<-14823.251,10867.978,16945.745>
+_loc=<-27637.309,20262.875,31594.608>
+_size=<96547.156,87177.367,120275.703>
+_isect=<-6667.843,19081.652,-14711.575>
+_loc=<-11427.890,32703.680,-25213.889>
+_size=<96547.156,87177.367,120275.703>
+_isect=<-28511.981,45051.772,-17877.532>
+_loc=<-41587.275,65712.039,-26075.980>
+_size=<114852.391,121124.461,120275.703>
+_isect=<-6621.835,786.241,24094.255>
+_loc=<-12527.069,1487.396,45581.077>
+_size=<114852.391,121124.461,129244.695>
+_isect=<5483.486,44286.355,-16381.522>
+_loc=<6814.802,55038.479,-20358.732>
+_size=<114852.391,121124.461,129244.695>
+_isect=<40783.946,15724.260,-36362.158>
+_loc=<55034.523,21218.573,-49067.690>
+_size=<154372.672,121124.461,145114.922>
+_isect=<12472.015,20689.636,-6433.334>
+_loc=<24028.383,39860.319,-12394.357>
+_size=<154372.672,121124.461,145114.922>
+_isect=<191.891,48489.329,9663.554>
+_loc=<248.184,62714.282,12498.479>
+_size=<154372.672,121124.461,145114.922>
+_isect=<812.155,76233.634,-11350.796>
+_loc=<1026.940,96394.586,-14352.658>
+_size=<154372.672,144710.484,145114.922>
+_isect=<-42149.053,79486.852,-53184.176>
+_loc=<-49816.194,93945.941,-62858.666>
+_size=<154372.672,144710.484,152018.156>
+_isect=<-1503.467,61403.175,39831.455>
+_loc=<-1861.065,76007.845,49305.317>
+_size=<154372.672,144710.484,155515.516>
+_isect=<18878.151,81974.989,6682.260>
+_loc=<23418.494,101690.617,8289.396>
+_size=<154372.672,150588.734,155515.516>
+_isect=<-25495.316,62006.283,21913.881>
+_loc=<-33694.385,81946.959,28961.192>
+_size=<154372.672,150588.734,155515.516>
+_isect=<24424.722,123319.259,-1825.426>
+_loc=<27758.251,140150.087,-2074.564>
+_size=<154372.672,189252.438,155515.516>
+_isect=<15713.587,68110.384,-33298.608>
+_loc=<20230.201,87687.602,-42869.750>
+_size=<154372.672,189252.438,155515.516>
+_isect=<33732.503,50639.773,9034.112>
+_loc=<44132.230,66252.008,11819.327>
+_size=<154372.672,189252.438,155515.516>
+_isect=<41.084,113812.227,1116.181>
+_loc=<47.676,132075.176,1295.289>
+_size=<50000.000,50000.000,50000.000>
+_isect=<-3487.533,12833.498,-21169.281>
+_loc=<-7026.804,25857.379,-42652.606>
+_size=<58783.156,77613.727,94408.961>
+_isect=<3385.060,24281.539,-4893.694>
+_loc=<6363.204,45644.208,-9199.121>
+_size=<64948.000,95445.852,94408.961>
+_isect=<830.789,69173.655,-3642.245>
+_loc=<1136.807,94653.573,-4983.855>
+_size=<64948.000,145557.938,94408.961>
+_isect=<-23295.694,8116.702,4053.370>
+_loc=<-39034.009,13600.257,6791.782>
+_size=<91016.359,145557.938,97018.258>
+_isect=<20480.902,38542.896,-28314.124>
+_loc=<27750.722,52223.931,-38364.394>
+_size=<114187.242,145557.938,97018.258>
+_isect=<14563.272,55246.440,-61249.276>
+_loc=<18533.844,70308.984,-77948.451>
+_size=<114187.242,145557.938,129620.586>
+_isect=<19189.694,13736.740,-8249.703>
+_loc=<34324.854,24571.085,-14756.350>
+_size=<115895.859,145557.938,129620.586>
+_isect=<34505.955,72552.453,-22620.181>
+_loc=<40654.190,85479.773,-26650.621>
+_size=<124081.094,145557.938,129620.586>
+_isect=<-10785.696,21385.428,7164.652>
+_loc=<-17245.148,34192.960,11455.495>
+_size=<124081.094,145557.938,137393.141>
+_isect=<20553.406,1867.126,14109.264>
+_loc=<39290.051,3569.213,26971.379>
+_size=<124081.094,145557.938,151791.094>
+_isect=<-19446.795,11519.202,-10683.171>
+_loc=<-34700.439,20554.615,-19062.819>
+_size=<124081.094,145557.938,151791.094>
+_isect=<26843.594,77863.339,-45332.903>
+_loc=<30458.855,88349.873,-51438.280>
+_size=<124081.094,145557.938,151791.094>
+_isect=<54006.145,12968.131,41645.194>
+_loc=<75542.114,18139.418,58252.000>
+_size=<163339.223,145557.938,188208.875>
+_isect=<3636.067,52147.124,14578.940>
+_loc=<5495.291,78811.417,22033.562>
+35mm Camera Debug Output: 
+	Focal Length is 5mm
+	Focal Ratio is f/8.0
+	Focal Distance is 202.7mm
+	Field of View is 39.6 degrees
+	Aperture Diameter is 0.625mm
+
+	Sensor size is 4mm by 3mm
+	Sensor size is 1024 by 768 (pixels)
+	Circle of confusion is 0.004mm
+
+	Hyperfocal distance is 893.9mm
+	Near Focus is 165.8mm
+	Far Focus is 260.7mm
+	Total distance in focus is 94.88mm
+	In front of focal plane 36.89mm (38.9%)
+	Behind focal plane 57.99mm (61.1%)
+Parse Warning: This rendering uses the following experimental feature(s):
+ spline. The design and implementation of these features is likely to change in
+ future versions of POV-Ray. Backward compatibility with the current
+ implementation is not guaranteed.
+----------------------------------------------------------------------------
+Parser Statistics
+----------------------------------------------------------------------------
+Finite Objects:            4
+Infinite Objects:         38
+Light Sources:             1
+Total:                    43
+----------------------------------------------------------------------------
+Parser Time
+  Parse Time:       0 hours  0 minutes  1 seconds (1.861 seconds)
+              using 1 thread(s) with 0.859 CPU-seconds total
+  Bounding Time:    0 hours  0 minutes  0 seconds (0.000 seconds)
+              using 1 thread(s) with 0.000 CPU-seconds total
+----------------------------------------------------------------------------
+Render Options
+  Quality:  9
+  Bounding boxes.......On   Bounding threshold: 3
+  Antialiasing.........On  (Method 2, Threshold 0.050, Depth 2, Jitter 1.00,
+ Gamma 2.50)
+File: garden_wall.inc  Line: 581
+Shutdown Warning: The maximum gradient found was 407.164, but max_gradient of
+ the isosurface was set to 300.000. The isosurface may contain holes! Adjust
+ max_gradient to get a proper rendering of the isosurface.
+File: garden_wall.inc  Line: 638
+Shutdown Warning: The maximum gradient found was 388.071, but max_gradient of
+ the isosurface was set to 300.000. The isosurface may contain holes! Adjust
+ max_gradient to get a proper rendering of the isosurface.
+File: garden_wall.inc  Line: 752
+Shutdown Warning: The maximum gradient found was 405.054, but max_gradient of
+ the isosurface was set to 300.000. The isosurface may contain holes! Adjust
+ max_gradient to get a proper rendering of the isosurface.
+File: garden_wall.inc  Line: 800
+Shutdown Warning: The maximum gradient found was 385.545, but max_gradient of
+ the isosurface was set to 300.000. The isosurface may contain holes! Adjust
+ max_gradient to get a proper rendering of the isosurface.
+----------------------------------------------------------------------------
+Render Statistics
+Image Resolution 1024 x 768
+----------------------------------------------------------------------------
+Pixels:           995328   Samples:         1839375   Smpls/Pxl: 1.85
+Rays:            2834703   Saved:                 0   Max Level: 1/10
+----------------------------------------------------------------------------
+Ray->Shape Intersection          Tests       Succeeded  Percentage
+----------------------------------------------------------------------------
+Isosurface                    94680710         7855117      8.30
+Isosurface Container         115266530       109782352     95.24
+Isosurface Cache                 37511              10      0.03
+Mesh                           2834703         2834701    100.00
+Plane                         36634203         1418466      3.87
+Sphere                      1285031808               0      0.00
+Bounding Box                 289147570       117308653     40.57
+----------------------------------------------------------------------------
+Isosurface roots:          94680710
+Function VM calls:       2156600347
+----------------------------------------------------------------------------
+Shadow Ray Tests:          36659616   Succeeded:               2870508
+Shadow Cache Hits:          2860116
+----------------------------------------------------------------------------
+Peak memory used:         146190336 bytes
+----------------------------------------------------------------------------
+Render Time:
+  Photon Time:      0 hours  0 minutes  0 seconds (0.000 seconds)
+              using 13 thread(s) with 0.000 CPU-seconds total
+  Radiosity Time:   No radiosity
+  Trace Time:       2 hours 15 minutes 18 seconds (8118.725 seconds)
+              using 10 thread(s) with 56746.746 CPU-seconds total
