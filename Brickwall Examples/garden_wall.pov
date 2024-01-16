@@ -39,6 +39,7 @@
 //
 #include "garden_wall.inc"
 #include "sky.inc"
+#include "ground.inc"
 
 // End Project Includes
 //-----------------------------------------------------------------------------
@@ -106,6 +107,8 @@ global_settings {
 #declare Scene_View = 1.1;
 #end
 
+#declare Scene_sundist  = Math_Scale(SCALE_M, 10000);
+
 // End Scene configuration
 //=============================================================================
 
@@ -113,8 +116,8 @@ global_settings {
 // Camera default configuration
 //
 
-#declare camera_location        = <0, Math_Scale(SCALE_FEET, 6), -Math_Scale(SCALE_FEET, 6)>;
-#declare camera_lookat          = <0, Math_Scale(SCALE_FEET, 6), 0>;
+#declare camera_location        = <0, Math_Scale(SCALE_FEET, 3), -Math_Scale(SCALE_FEET, 8)>;
+#declare camera_lookat          = <0, Math_Scale(SCALE_FEET, 3), 0>;
 #declare camera_blur_focus      = camera_lookat;
 #declare camera_use_blur        = false;
 #declare camera_focal_length    = Math_Scale(SCALE_MM, 50);
@@ -189,6 +192,49 @@ global_settings {
 // End Standing_person
 //-----------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------
+// Scene_wall()
+//
+#macro Scene_wall()
+    #local _wall    = object {
+        Garden_wall_object()
+        rotate <0, -45, 0>
+    }
+    
+    _wall    
+#end
+
+// End Scene_wall
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Scene_ground()
+//
+#macro Scene_ground()
+    #local _ground  = object {
+        Ground(Scene_sundist,Scene_Seed)
+    }
+    
+    _ground    
+#end
+
+// End Scene_ground
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Scene_sky()
+//
+#macro Scene_sky()
+    #local _sky  = object {
+        Sky(Scene_sundate,Scene_sundist,Scene_Seed)
+    }
+    
+    _sky    
+#end
+
+// End Scene_sky
+//-----------------------------------------------------------------------------
+
 // End Scene object declarations
 //=============================================================================
 
@@ -198,6 +244,7 @@ global_settings {
 
 #switch(val(str(Scene_View,0,2)))
     #case(1.1)
+        #declare Sky_quality        = 0;
     #break
     
     #case(2.1)
@@ -277,7 +324,7 @@ global_settings {
         #declare camera_lookat      = <0, 0.5*_ht, 0>;
         #declare Scene_object   = union {
             plane { y, -0.0001 pigment { color rgb 0.25 } }
-            object { Sky(Scene_sundate,Scene_Seed) }
+            object { Sky(Scene_sundate,Scene_sundist,Scene_Seed) }
             /*
             object { Camera_light_source() }
             light_source {
@@ -314,11 +361,13 @@ global_settings {
     #break
     
     #case(3.1)
-        #local _ht                  = Garden_wall_courses*Garden_wall_brick_spec.unit_sz.y;
-        #declare camera_location    = <0, 0.5*_ht, -0.5*Garden_wall_front_length>;
-        #declare camera_lookat      = <0, 0.5*_ht, 0>;
+        #local _ht                  = Math_Scale(SCALE_FEET, 6);
+        #declare camera_location    = <0, 1*_ht, -0.5*Garden_wall_front_length>;
+        #declare camera_lookat      = <0, 1*_ht, 0>;
+        #declare Sky_quality        = 0;
         #declare Scene_object       = union {
-            object { Sky(Scene_sundate,Scene_Seed) }
+            object { Scene_ground() }
+            object { Scene_sky() }
         }
     #break
     
@@ -335,6 +384,9 @@ global_settings {
 //
 #ifndef(Scene_object)
 #declare Scene_object    = union {
+    object { Scene_ground() }
+    object { Scene_wall() }
+    object { Scene_sky() }
 } 
 #end
 

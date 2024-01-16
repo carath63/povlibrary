@@ -52,7 +52,7 @@
 #declare Garden_wall_jitter_noise_fn    = Noise_create2(<0,0,0>, f_snoise3d, 7763*<rand(Garden_wall_seed),rand(Garden_wall_seed),rand(Garden_wall_seed)>, Garden_wall_jitter_scale, 1)
 
 #declare Garden_wall_front_length   = 20*Garden_wall_brick_spec.unit_sz.x - Garden_wall_brick_spec.mortar_sz;
-#declare Garden_wall_side_length    = 10*Garden_wall_brick_spec.unit_sz.x - Garden_wall_brick_spec.mortar_sz;
+#declare Garden_wall_side_length    = 20*Garden_wall_brick_spec.unit_sz.x - Garden_wall_brick_spec.mortar_sz;
 #declare Garden_wall_courses        = 10;
 #declare Garden_wall_half_bricks    = 2;
  

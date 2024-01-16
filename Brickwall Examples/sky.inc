@@ -256,7 +256,7 @@ CIE_ColorSystemWhitepoint(sRGB_ColSys,Illuminant_D55)
 //=============================================================================
 // Sky(NSeed)
 //
-#macro Sky(SunDate,NSeed)
+#macro Sky(SunDate,SunDist,NSeed)
     #ifndef(Sky_quality)
     #declare Sky_quality    = 2;
     #end
@@ -267,29 +267,30 @@ CIE_ColorSystemWhitepoint(sRGB_ColSys,Illuminant_D55)
     #local _sky_config[SkyConfig_sun_parallel_light]     = true;
     #local _sky_config[SkyConfig_min_vertices]           = 14400;    // With a large sky dome, this removes the visible triangles
     
-    #local _sun_dist    = Math_Scale(SCALE_M, 10000); 
     /* Edinburgh Scotland */
     #local _lat         = 55.9533;
     #local _lng         = -3.18;
 
     #local _sky = union {
         object {
-            Sky_dome(_sky_config,SunDate,_sun_dist+2,_lat,_lng)
+            Sky_dome(_sky_config,SunDate,SunDist+2,_lat,_lng)
             translate <0, -1, 0>
         }
-        object { Sun_light(_sky_config,SunDate,_lat,_lng,_sun_dist,45) }
+        object { Sun_light(_sky_config,SunDate,_lat,_lng,SunDist,45) }
         
         #if (Sky_quality > 0)
         #local _node_scale  = Math_Scale(SCALE_M, 250);
         #local _node_density    = 0.3;
         object {
             object { Cumulus_cloud(20,_node_density,_node_scale,NSeed) }
-            translate <0, Math_Scale(SCALE_M, 1000), Math_Scale(SCALE_M, 1000)>
+            translate <0, Math_Scale(SCALE_M, 250), Math_Scale(SCALE_M, 250)>
         }
+        /*
         object {
             object { Cumulus_cloud(15,_node_density,_node_scale,NSeed) }
             translate <Math_Scale(SCALE_M, 600), Math_Scale(SCALE_M, 1500), Math_Scale(SCALE_M, 1500)>
-        }                    
+        } 
+        */                   
         #end
     }
     
