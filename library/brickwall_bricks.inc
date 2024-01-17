@@ -282,6 +282,26 @@
 //
 
 //-----------------------------------------------------------------------------
+// Brickwall_fixed_square_brick_shape_create(BrickSpec)
+//
+#macro Brickwall_fixed_square_brick_shape_create(BrickSpec)
+    #local _bfsbs_box_fn    = Iso_fixed_box(BrickSpec.brick_sz)
+    
+    #local _x_offset    = BrickSpec.brick_sz.x/2;
+    #local _y_offset    = BrickSpec.brick_sz.y/2;
+    #local _z_offset    = BrickSpec.brick_sz.z/2;
+    
+    #local _bfsbs_shape_fn   = function(x,y,z,xoff,yoff,zoff) {
+        _bfsbs_box_fn(xoff-_x_offset,yoff-_y_offset,zoff-_z_offset)
+    }
+    
+    Brickwall_brick_shape_create(BrickSpec,_bfsbs_shape_fn)
+#end
+
+// End Brickwall_fixed_square_brick_shape_create
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // Brickwall_fixed_rounded_brick_shape_create(BrickSpec,Rounding)
 //
 #macro Brickwall_fixed_rounded_brick_shape_create(BrickSpec,Rounding)

@@ -289,14 +289,17 @@
         )        
     }
     #local _x_size_fn         = function(x,y,z) {
-        select(mod(_y_size_fn(x,y,z)+Parity,2) - 0.5,
+        select(mod(_y_index_fn(x,y,z)+Parity,2) - 0.5,
             _even_x_size_fn(x,y,z),
             _odd_x_size_fn(x,y,z)
         )    
     }
     
+    #local _wall_size           = <WallSpec.length, WallSpec.courses*BrickSpec.unit_sz.y, WallSpec.half_bricks*BrickSpec.unit_sz.z - BrickSpec.mortar_sz>;
+    
     #local _stretcher_layout  = Brickwall_base_layout_create(
         WallSpec,
+        _wall_size,
         _x_origin_fn,
         _y_origin_fn,
         _z_origin_fn,

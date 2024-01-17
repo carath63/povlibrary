@@ -252,6 +252,22 @@
 // End Common_mortar_texture
 //-----------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------
+// Common_jitter(Layout)
+//
+#ifndef (Common_jitter_size)
+    #declare Common_jitter_size = Math_Scale(SCALE_INCH, <1/8, 1/8, 1/4>);
+#end
+#ifndef (Common_jitter_fn)
+    #declare Common_jitter_fn   = f_snoise3d;
+#end 
+#macro Common_jitter(Layout)
+    Brickwall_jitter_create(Layout,Common_jitter_size,Common_jitter_fn)
+#end
+
+// End Common_Jitter
+//-----------------------------------------------------------------------------
+
 // End Brick Shapes and Textures
 //=============================================================================
 

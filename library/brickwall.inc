@@ -200,6 +200,7 @@
 //      all layouts must include the following:
 //
 //      .wall_spec:         The Brickwall_wall_spec defining the wall the layout applies to
+//      .wall_size:         The basic extent of the wall, not taking any noise or jitter into account
 //      .[x,y,z]_origin_fn: function(x,y,z) that returns the [x,y,z] element of
 //                          the left, bottom, front corner of the nearest brick/mortar
 //                          block to <x,y,z>
@@ -222,11 +223,12 @@
 //          - function(x,y,z) that can be used in an isosurface to define the mortar
 
 //-----------------------------------------------------------------------------
-// Brickwall_base_layout_create(WallSpec,XOFN,YOFN,ZOFN,XIFN,YIFN,ZIFN,XSFN,YSFN,ZSFN)
+// Brickwall_base_layout_create(WallSpec,WallSize,XOFN,YOFN,ZOFN,XIFN,YIFN,ZIFN,XSFN,YSFN,ZSFN)
 //
-#macro Brickwall_base_layout_create(WallSpec,XOFN,YOFN,ZOFN,XIFN,YIFN,ZIFN,XSFN,YSFN,ZSFN)
+#macro Brickwall_base_layout_create(WallSpec,WallSize,XOFN,YOFN,ZOFN,XIFN,YIFN,ZIFN,XSFN,YSFN,ZSFN)
     #local _layout  = dictionary {
         .wall_spec:     WallSpec,
+        .wall_sz:       WallSize,
         .x_origin_fn:   XOFN,
         .y_origin_fn:   YOFN,
         .z_origin_fn:   ZOFN,
@@ -361,6 +363,10 @@
             _bps_aux_fn(x,y,z)
         #end
     }
+#end
+
+#macro Brickwall_default_palette_selector_fn(Layout,Scale,PaletteFn)
+    Brickwall_palette_selector_fn(Layout,f_noise3d,Scale,PaletteFn)
 #end
 
 // End Brickwall_palette_selector_fn
