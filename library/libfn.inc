@@ -24,6 +24,7 @@
 // export to news.povray.org, only include standard POV-Ray include files or
 // other files in this library directory.
 //
+#include "functions.inc"
 
 // End Required Include Files
 //=============================================================================
