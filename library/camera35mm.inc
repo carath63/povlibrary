@@ -273,7 +273,7 @@ Focal Blur Debug Output:
 #include "arrays.inc"
 	// For: SortArray(), etc
 
-#include "mathtools.inc"
+#include "libscale.inc"
 
 // -- Constants ------------------------------------------------------------------------------------
 
