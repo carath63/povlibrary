@@ -321,24 +321,24 @@
     
     #local _bps_x_fn    = function(x,y,z,xo,yo,zo) {
         RandFn(
-            0,
+            xo,
             yo,
             zo
-        )*_sx //+ (x - xo)    
+        )*_sx + (x - xo)    
     }
     #local _bps_y_fn    = function(x,y,z,xo,yo,zo) {
         RandFn(
             xo,
-            0,
+            yo,
             zo
-        )*_sy //+ (y - yo)
+        )*_sy + (y - yo)
     }
     #local _bps_z_fn    = function(x,y,z,xo,yo,zo) {
         RandFn(
             xo,
             yo,
-            0
-        )*_sz //+ (z - zo)
+            zo
+        )*_sz + (z - zo)
     }
     
     #local _bps_shape_fn  = function(x,y,z,xo,yo,zo) {
