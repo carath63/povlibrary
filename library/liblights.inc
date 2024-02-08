@@ -4,9 +4,9 @@
  *      FILL IN DESCRIPTION HERE
  ******************************************************************************/
 
-#ifndef(Lib_template_Inc_Temp)
+#ifndef(Liblights_Inc_Temp)
 
-#declare Lib_template_Inc_Temp = version;
+#declare Liblights_Inc_Temp = version;
 #version 3.8;
 
 #ifdef(View_POV_Include_Stack)
@@ -81,5 +81,5 @@
 // End Lightsys Utilities
 //=============================================================================
 
-#version Lib_template_Inc_Temp;
-#end // ifndef(Lib_template_Inc_Temp)
+#version Liblights_Inc_Temp;
+#end // ifndef(Liblights_Inc_Temp)
