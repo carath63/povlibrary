@@ -144,6 +144,43 @@
 // End Iso_fixed_cylinder
 //-----------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------
+// Iso_rounded_cylinder()
+//
+// Cylinder shape functions for Y axis cylinders with rounded top and bottom
+// edges
+//
+#macro Iso_rounded_cylinder()
+
+    #local _cyl_fn  = Iso_cylinder()
+
+    function(x,y,z,r,sy,rnd) {
+        min(
+            _cyl_fn(x,y,z,r-rnd,sy),
+            _cyl_fn(x,y,z,r,sy-rnd),
+            f_torus(x,abs(y)-(sy-rnd),z,r-rnd,rnd)
+        )
+    }
+#end
+
+// End Iso_rounded_cylinder
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_rounded_cylinder(Radius,Height,Rnd)
+//
+#macro Iso_fixed_rounded_cylinder(Radius,Height,Rnd)
+    #local _sy  = Height/2;
+    #local _ifrc_cylinder_fn    = Iso_rounded_cylinder()
+    
+    function(x,y,z) {
+        _ifrc_cylinder_fn(x,y,z,Radius,_sy,Rnd)
+    }    
+#end
+
+// End Iso_fixed_rounded_cylinder
+//-----------------------------------------------------------------------------
+
 // End Iso_cylinder, Iso_fixed_cylinder
 //=============================================================================
 
