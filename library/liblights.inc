@@ -78,6 +78,69 @@
 // End Supporting Library Component
 //-----------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------
+// Light_config_create(Lct,Lm)
+//
+#macro Light_config_create(Lct,Lm)
+    #local _cfg = dictionary {
+        .light_color:   Lct,
+        .light_lumens:  Lm,
+        .area_axis1:    x,
+        .area_axis2:    z,
+        .area_size1:    0,
+        .area_size2:    0,
+        .area_adaptive: 0,
+        .area_jitter:   false,
+        .area_orient:   false,
+        .area_circular: false,
+        .sine_falloff:  false
+    }
+    ;
+    
+    _cfg
+#end
+
+// End Light_config_create
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Light_advanced(Cfg)
+//
+#macro Light_advanced(Cfg)
+    #local _light   = light_source {
+        0,
+        Light_Color(Cfg.light_color,Cfg.light_lumens)
+        
+        #if (Cfg.sine_falloff)
+        Light_Spot_Cos_Falloff(vcross(Ala1,Ala2))
+        #end
+        
+        // area light?
+        #if (Cfg.area_size1+Cfg.area_size2>0)
+            area_light Cfg.area_axis1,Cfg.area_axis2,Cfg.area_size1,Cfg.area_size2
+            #if (Cfg.area_jitter)
+            jitter
+            #end
+            #if (Cfg.area_adaptive >= 0)
+            adaptive Cfg.area_adaptive
+            #end
+            #if (Cfg.area_circular)
+            circular
+            #end
+            #if (Cfg.area_orient)
+            orient
+            #end
+        #end
+
+        Light_Fading()
+    }
+    
+    _light
+#end
+
+// End Light_advanced
+//-----------------------------------------------------------------------------
+
 // End Lightsys Utilities
 //=============================================================================
 
