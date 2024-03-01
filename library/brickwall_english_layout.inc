@@ -458,7 +458,7 @@
     #local _u_inset     = <Inset, Inset, Inset>;
     #local _block_size  = <Layout.wall_spec.length, Layout.wall_spec.courses*Layout.brick_spec.unit_sz.y, Layout.wall_spec.half_bricks*Layout.brick_spec.unit_sz.z - Layout.brick_spec.mortar_sz> - (_l_inset + _u_inset);
     #local _bsmb_box_fn = Iso_fixed_box(_block_size)
-    #local _bsmb_mortar_fn  = Translate_fn(_bsmb_box_fn, _block_size/2)
+    #local _bsmb_mortar_fn  = Translate_fn(_bsmb_box_fn, _block_size/2 + _l_inset)
     
     #if (Layout.wall_spec.left_end_type = Brickwall_end_type_corner | Layout.wall_spec.right_end_type = Brickwall_end_type_corner)
         #local _bsmb_shape_fn   = function(x,y,z) {
@@ -482,9 +482,9 @@
         #local _bsmb_shape_fn   = _bsmb_mortar_fn;
     #end
     
-    #local _bsmb_trans_shape_fn = Translate_fn(_bsmb_shape_fn, _l_inset)
+    //#local _bsmb_trans_shape_fn = Translate_fn(_bsmb_shape_fn, _l_inset)
     
-    Mortar_block_create(_l_inset, _block_size, _bsmb_trans_shape_fn)
+    Mortar_block_create(_l_inset, _block_size, _bsmb_shape_fn)
 #end
 
 // End Brickwall_english_mortar_block_create
