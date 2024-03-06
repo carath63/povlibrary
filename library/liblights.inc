@@ -24,8 +24,8 @@
 // export to news.povray.org, only include standard POV-Ray include files or
 // other files in this library directory.
 //
-#include "cie.inc"
-#include "lightsys.inc"
+#include "CIE.inc"
+#include "Lightsys.inc"
 #include "lightsys_constants.inc"
 
 // End Required Include Files
