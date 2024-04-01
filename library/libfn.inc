@@ -89,6 +89,35 @@
 // End f_unit_shift_offset
 //-----------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------
+// Distance_fn_create(Point)
+//
+#macro Distance_fn_create(Point)
+    #local _px  = Point.x;
+    #local _py  = Point.y;
+    #local _pz  = Point.z;
+    
+    function(x,y,z) {
+        sqrt(pow(x-_px,2) + pow(y-_py,2) + pow(z-_pz,2))
+    }
+#end
+
+// End Distance_fn_create
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// f_camera_distance(x,y,z)
+//
+#macro Camera_distance_fn_create()
+    #ifndef(camera_location)
+        #declare camera_location    = <0,0,0>;
+    #end
+    Distance_fn_create(camera_location)    
+#end
+
+// End f_camera_distance
+//-----------------------------------------------------------------------------
+
 // End General Useful Functions
 //=============================================================================
 

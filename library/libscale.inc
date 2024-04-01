@@ -81,5 +81,22 @@ Math_Convert(Scale,Math_Default_Scale,Units)
 // End Scale conversion factors
 //=============================================================================
 
+//=============================================================================
+// Visual Acuity
+//
+#declare Visual_acuity_angle_degrees    = 0.008;
+#declare Visual_acuity_angle_radians    = radians(Visual_acuity_angle_degrees);
+
+#macro Visual_acuity(Distance)
+    (Visual_acuity_angle_radians*Distance)
+#end
+
+#declare f_visual_acuity    = function(d) {
+    (Visual_acuity_angle_radians*d)
+}
+
+// End Visual Acuity
+//=============================================================================
+
 #version Libscale_Inc_Temp;
 #end // ifndef(Libscale_Inc_Temp)
