@@ -87,7 +87,7 @@
         _SkyConfig_default_min_vertices,
         _SkyConfig_default_max_faces,
         6,
-        false,
+        1,
         false
     };
 _result    
@@ -113,7 +113,7 @@ _result
     #debug concat("\t_min_vertices=", str(SkyConfig[SkyConfig_min_vertices], 0, 3), "\n")
     #debug concat("\t_max_faces=", str(SkyConfig[SkyConfig_max_faces], 0, 3), "\n")
     #debug concat("\t_sun_light_intensity=", str(SkyConfig[SkyConfig_sun_light_intensity], 0, 3), "\n")
-    #debug concat("\t_sun_area_light=", str(SkyConfig[SkyConfig_sun_area_light], 0, 3), "\n")
+    #debug concat("\t_sun_area_light=", str(SkyConfig[SkyConfig_sun_area_light], 0, 0), "\n")
     #debug concat("\t_sun_parallel_light=", str(SkyConfig[SkyConfig_sun_parallel_light], 0, 3), "\n")
 #end
 

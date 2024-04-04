@@ -332,8 +332,8 @@ T
             parallel
             point_at <0, 0, -Distance>
             #end
-            #if (SkyConfig[SkyConfig_sun_area_light])
-            area_light x*_sun_arc_radius,y*_sun_arc_radius,17,17
+            #if (SkyConfig[SkyConfig_sun_area_light] > 1)
+            area_light x*_sun_arc_radius,y*_sun_arc_radius,SkyConfig[SkyConfig_sun_area_light],SkyConfig[SkyConfig_sun_area_light]
             jitter
             adaptive 0
             orient circular
