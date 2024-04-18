@@ -99,5 +99,33 @@
 // End Noise_turbulate
 //=============================================================================
 
+//=============================================================================
+// Blurred_texture(Texture,BlurAmount,BlurScale,BlurSamples,RStream)
+//
+#macro Blurred_texture(Texture,BlurAmount,BlurScale,BlurSamples,RStream)
+    #local _t   = texture {
+        average
+        texture_map {
+            #for (i, 1, BlurSamples, 1)
+                #local _t_blurred   = texture {
+                    Texture
+                    normal {
+                        bumps BlurAmount
+                        translate BlurScale*<rand(RStream),rand(RStream),rand(RStream)>
+                        scale BlurScale
+                    }    
+                }
+                [1 _t_blurred]
+            #end
+        }
+    }
+    ;
+    
+    _t
+#end
+
+// End Blurred_texture
+//=============================================================================
+
 #version Libnoise_Inc_Temp;
 #end // ifndef(Libnoise_Inc_Temp)
