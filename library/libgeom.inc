@@ -140,5 +140,105 @@
 // End Circles, chords, and arcs
 //=============================================================================
 
+//=============================================================================
+// Non-standard rotation order macros
+//
+
+//-----------------------------------------------------------------------------
+// XZY_rotate(Pt,Rotation)
+//
+// Rotate Pt first around the X axis, then the Z axis, then the Y axis.
+// Useful for rotating objects that lie along the X axis and have full freedom
+// of movement.
+//
+#macro XZY_rotate(Pt,Rotation)
+    #local _r   = <1,1,1>*Rotation;
+    #local _p   = vrotate(
+        vrotate(
+            Pt,
+            <_r.x,0,_r.z>
+        ),
+        <0, _r.y, 0>
+    );
+    
+    _p        
+#end
+
+// End XZY_rotate
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// XZY_rotation_transform(Rotation)
+//
+// Creates a transform{} that rotates around the X axis, then the Z axis, then
+// the Y axis.
+//
+#macro XZY_rotation_transform(Rotation)
+    #local _r   = <1,1,1>*Rotation;
+    #local _t   = transform {
+        #if (_r.x != 0 | _r.z != 0)
+            rotate <_r.x, 0, _r.z>
+        #end 
+        #if (_r.y != 0)
+            rotate <0, _r.y, 0>
+        #end    
+    }
+    
+    _t
+#end
+
+// End XZY_rotation_transform
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// ZXY_rotate(Pt,Rotation)
+//
+// Rotate Pt first around the X axis, then the Z axis, then the Y axis.
+// Useful for rotating objects that lie along the X axis and have full freedom
+// of movement.
+//
+#macro ZXY_rotate(Pt,Rotation)
+    #local _r   = <1,1,1>*Rotation;
+    #local _p   = vrotate(
+        vrotate(
+            Pt,
+            <0,0,_r.z>
+        ),
+        <_r.x, _r.y, 0>
+    );
+    
+    _p        
+#end
+
+// End ZXY_rotate
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// ZXY_rotation_transform(Rotation)
+//
+// Creates a transform{} that rotates around the X axis, then the Z axis, then
+// the Y axis.
+//
+#macro ZXY_rotation_transform(Rotation)
+    #local _r   = <1,1,1>*Rotation;
+    #local _t   = transform {
+        #if (_r.z != 0)
+            rotate <0, 0, _r.z>
+        #end 
+        #if (_r.y != 0 | _r.x != 0)
+            rotate <_r.x, _r.y, 0>
+        #end    
+    }
+    
+    _t
+#end
+
+// End ZXY_rotation_transform
+//-----------------------------------------------------------------------------
+
+
+// End Non-standard rotation order macros
+//=============================================================================
+
 #version Libgeom_Inc_Temp;
 #end // ifndef(Libgeom_Inc_Temp)
