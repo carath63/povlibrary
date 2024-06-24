@@ -161,7 +161,7 @@
 //-----------------------------------------------------------------------------
 // Iso_fixed_box2(Size)
 //
-#macro Iso_fixed_box(Size)
+#macro Iso_fixed_box2(Size)
     #local _sx  = Size.x/2;
     #local _sy  = Size.y/2;
     #local _sz  = Size.z/2;
@@ -566,7 +566,7 @@
         min(max(x,y,z),0) - r
     }
     function(x,y,z,r,sx,sy,sz) {
-        _ib_rbox_fn(abs(x)-sx+r,abs(y)-sx+r,abs(z)-sz+r,r)
+        _ib_rbox_fn(abs(x)-sx+r,abs(y)-sy+r,abs(z)-sz+r,r)
     }
     
 #end
