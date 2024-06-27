@@ -186,7 +186,7 @@
         min(max(x,y,z),0)
     }
     function(x,y,z,sx,sy,sz) {
-        _ib_box_fn(abs(x)-sx,abs(y)-sx,abs(z)-sz)
+        _ib_box_fn(abs(x)-sx,abs(y)-sy,abs(z)-sz)
     }
     
 #end
