@@ -1606,6 +1606,98 @@
     }    
 #end
 
+#macro Iso_smooth_union2(MixFn)
+    function(d1,d2,k) {
+        MixFn(d1,d2,k)
+    }    
+#end
+
+#macro Iso_fixed_smooth_union2(MixFn,K)
+    function(d1,d2) {
+        MixFn(d1,d2,K)
+    }    
+#end
+
+#macro Iso_smooth_subtraction2(MixFn)
+    #local _iss_union_fn    = Iso_smooth_union2(MixFn)
+    function(d1,d2,k) {
+        -_iss_union_fn(d1, -d2, k)
+    }    
+#end
+
+#macro Iso_fixed_smooth_subtraction2(MixFn,K)
+    #local _iss_union_fn    = Iso_fixed_smooth_union2(MixFn,K)
+    function(d1,d2) {
+        -_iss_union_fn(d1, -d2)
+    }    
+#end
+
+#macro Iso_smooth_intersection2(MixFn)
+    #local _iss_union_fn    = Iso_smooth_union2(MixFn)
+    function(d1,d2,k) {
+        -_iss_union_fn(-d1,-d2,k)
+    }
+#end
+
+#macro Iso_fixed_smooth_intersection2(MixFn,K)
+    #local _iss_union_fn    = Iso_fixed_smooth_union2(MixFn,K)
+    function(d1,d2) {
+        -_iss_union_fn(-d1, -d2)
+    }    
+#end
+
+#macro Iso_root_mix()
+    #local _kmult   = 2.0;
+    #local _irm_mix_fn  = function(d1,d2,k,h) {
+        0.5*(d1+d2-sqrt(h*h+k*k))
+    }                           
+    #local _irm_aux_fn  = function(d1,d2,k) {
+        _irm_mix_fn(d1,d2,k,d2-d1)
+    }
+    function(d1,d2,k) {
+        _irm_aux_fn(d1,d2,k*_kmult)
+    }
+#end
+
+#macro Iso_quadratic_mix()
+    #local _kmult   = 4.0;
+    #local _iqm_mix_fn  = function(d1,d2,k,h) {
+        min(d1,d2) - 0.25*h*h*k
+    }
+    #local _iqm_aux_fn  = function(d1,d2,k) {
+        _iqm_mix_fn(d1,d2,k,max(k-abs(d1-d2), 0.0)/k)
+    }
+    function(d1,d2,k) {
+        _iqm_aux_fn(d1,d2,_kmult*k)
+    }        
+#end
+
+#macro Iso_cubic_mix()
+    #local _kmult   = 6.0;
+    #local _icm_mix_fn  = function(d1,d2,k,h) {
+        min(d1,d2) - h*h*h*k/6.0
+    }
+    #local _icm_aux_fn  = function(d1,d2,k) {
+        _icm_mix_fn(d1,d2,k,max(k-abs(d1-d2), 0.0)/k)
+    }
+    function(d1,d2,k) {
+        _icm_aux_fn(d1,d2,_kmult*k)
+    }        
+#end
+
+#macro Iso_quartic_mix()
+    #local _kmult   = 16.0/3.0;
+    #local _iqm_mix_fn  = function(d1,d2,k,h) {
+        min(d1,d2) - h*h*h*(4.0-h)*k/16.0
+    }
+    #local _iqm_aux_fn  = function(d1,d2,k) {
+        _iqm_mix_fn(d1,d2,k,max(k-abs(d1-d2), 0.0)/k)
+    }
+    function(d1,d2,k) {
+        _iqm_aux_fn(d1,d2,_kmult*k)
+    }        
+#end
+
 // End Iso Shape Combining Functions
 //=============================================================================
 

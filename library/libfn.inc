@@ -256,7 +256,7 @@
     #local _t   = <1,1>*T;
     #local _tx  = _t.x;
     #local _ty  = _t.y;
-    function {
+    function(x,y) {
         FN2D(x-_tx,y-_ty)
     }    
 #end
@@ -289,7 +289,7 @@
     #local _sx  = _s.x;
     #local _sy  = _s.y;
     
-    function {
+    function(x,y) {
         FN2D(x/_sx,y/_sy)
     }    
 #end
@@ -322,7 +322,7 @@
 // Rotate_fn_2d(FN2D,R)
 //
 #macro Rotate_fn(FN2D,R)
-    function {
+    function(x,y) {
         FN2D(
             f_rotate2d_x(x,y,R),
             f_rotate2d_y(x,y,R)
