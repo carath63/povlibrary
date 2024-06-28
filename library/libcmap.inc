@@ -28,6 +28,7 @@
 //-----------------------------------------------------------------------------
 // My Includes
 //
+#include "libcolors.inc"
 
 // End My Includes
 //-----------------------------------------------------------------------------
@@ -215,6 +216,29 @@
 #end
 
 // End Cmap_create_from_pigment
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Cmap_create_from_cosine_palette(C1,C2,C3,C4,ColorType,StepSize)
+//
+#macro Cmap_create_from_cosine_palette(C1,C2,C3,C4,ColorType,StepSize)
+    #if (ColorType = Color_type_rgb | ColorType = Color_type_srgb)
+        #local _cmap    = Cmap_create();
+        #local _t       = 0.0;
+        #while (_t <= 1.0)
+            #local _c   = Cosine_color(C1,C2,C3,C4,_t);
+            #local _e   = Cmap_entry_create(min(_t,1.0), _c, ColorType);
+            Cmap_add(_cmap,_e)
+            #local _t   = _t + StepSize;
+        #end
+    #else
+        #error "Colors with transparency or filter are not yet supported\n"
+    #end
+    
+    _cmap    
+#end
+
+// End Cmap_create_from_cosine_palette
 //-----------------------------------------------------------------------------
 
 /*

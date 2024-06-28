@@ -445,5 +445,37 @@ union {
 // End CIE_Skylight extract
 //=============================================================================
 
+//=============================================================================
+// Cosine Color Palette Creation
+//
+
+//-----------------------------------------------------------------------------
+// Cosine_color(C1,C2,C3,C4,T)
+//
+// Calculates a color on a gradient pallette ranging from C1 - C2 to C1 + C2
+// along a cosine ramp controlled by C3 and C4, with C3 controlling the
+// frequency, and C4 providing an offset
+//
+// Original article: https://iquilezles.org/articles/palettes/
+// Adapted from code created by kurtz le pirate: https://news.povray.org/povray.binaries.images/attachment/%3C667af29b%241%40news.povray.org%3E/utf-8
+// 
+#macro Cosine_color(C1,C2,C3,C4,T)
+    #local _c   = 
+        C1 + C2*<
+            cos(2*pi*(T*C3.red+C4.red)),
+            cos(2*pi*(T*C3.green+C4.green)),
+            cos(2*pi*(T*C3.blue+C4.blue))
+        >;
+        
+    _c        
+#end
+
+// End Cosine_Color
+//-----------------------------------------------------------------------------
+
+
+// End Cosine Color Palette Creation
+//=============================================================================
+
 #version Lib_colors_Inc_Temp;
 #end // ifndef(Lib_colors_Inc_Temp)
