@@ -1620,7 +1620,7 @@
 //
 #macro Iso_2d_box()
     #local _ib_box_fn   = function(x,y) {
-        Iso_length_3d(max(x,0),max(y,0)) +
+        Iso_length_2d(max(x,0),max(y,0)) +
         min(max(x,y),0)
     }
     function(x,y,sx,sy) {
