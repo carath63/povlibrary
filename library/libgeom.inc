@@ -71,7 +71,7 @@
 // with the given radius.
 //
 #macro RadiusHeight2Chord(Radius,Height)
-    #if (Radius < 0 | Height < 0 | Height > 2*Radius)
+    #if (Radius < 0 | Height < 0 | Height > Radius)
         #error concat("RadiusHeight2Chord(", str(Radius,0,5), ",", str(Height,0,5), "): Invalid Height\n")
     #end    
     2*(sqrt(2*Radius*Height - Height*Height))

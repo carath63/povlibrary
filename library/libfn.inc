@@ -332,7 +332,7 @@
 //-----------------------------------------------------------------------------
 // Rotate_fn_2d(FN2D,R)
 //
-#macro Rotate_fn(FN2D,R)
+#macro Rotate_fn_2d(FN2D,R)
     function(x,y) {
         FN2D(
             f_rotate2d_x(x,y,R),

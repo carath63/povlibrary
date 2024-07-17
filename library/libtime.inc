@@ -148,6 +148,9 @@ _result
 // hour (24-hour format), minute (MM), and second (SS.fraction), and a timezone
 // offset (-12 to +12) relative to GMT.
 //
+// DateTime can also be used as a representation of duration by ignoring the
+// timezone.
+//
 
 #declare DateTime_Year      = 0;
 #declare DateTime_Month     = 1;
@@ -197,6 +200,131 @@ _result
 #end
 
 // End DateTime_copy
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// DateTime_add(DateTime,ValueType,Value)
+//
+// Adds the given Value expressed as DateTime_Year, DateTime_Month, DateTime_Day
+// DateTime_Hour, DateTime_Minute, or DateTime_Second to the given DateTime
+//
+#macro DateTime_add(DateTime,ValueType,Value)
+    #if (Value < 0)
+        #error concat("DateTime_add: only positive values are allowed. Use DateTime_sub for subtraction\n")
+    #end
+    
+    #switch(ValueType)
+        #case(DateTime_Year)
+            #local DateTime[DateTime_Year]  = DateTime[DateTime_Year] + Value; 
+        #break
+        
+        #case(DateTime_Month)
+            #local DateTime[DateTime_Month] = DateTime[DateTime_Month] + Value;
+            #while (DateTime[DateTime_Month] > 12)
+                DateTime_add(DateTime,DateTime_Year,1)
+                #local DateTime[DateTime_Month] = DateTime[DateTime_Month] - 12;
+            #end
+        #break
+        
+        #case(DateTime_Day)
+            #local _monthdays               = DateTime_monthdays(DateTime);
+            #local DateTime[DateTime_Day]   = DateTime[DateTime_Day] + Value;
+            #while (DateTime[DateTime_Day] > _monthdays)
+                DateTime_add(DateTime,DateTime_Month,1)
+                #local DateTime[DateTime_Day]   = DateTime[DateTime_Day] - _monthdays;
+                #local _monthdays               = DateTime_monthdays(DateTime);
+            #end    
+        #break
+        
+        #case(DateTime_Hour)
+            #local DateTime[DateTime_Hour]  = DateTime[DateTime_Hour] + Value;
+            #while (DateTime[DateTime_Hour] >= 24)
+                DateTime_add(DateTime,DateTime_Day,1)
+                #local DateTime[DateTime_Hour]  = DateTime[DateTime_Hour] - 24;
+            #end
+        #break
+        
+        #case(DateTime_Minute)
+            #local DateTime[DateTime_Minute]    = DateTime[DateTime_Minute] + Value;
+            #while (DateTime[DateTime_Minute] >= 60)
+                DateTime_add(DateTime,DateTime_Hour,1)
+                #local DateTime[DateTime_Minute]    = DateTime[DateTime_Minute] - 60;
+            #end
+        #break
+        
+        #case(DateTime_Second)
+            #local DateTime[DateTime_Second]    = DateTime[DateTime_Second] + Value;
+            #while (DateTime[DateTime_Second] >= 60)
+                DateTime_add(DateTime,DateTime_Minute,1)
+                #local DateTime[DateTime_Second]    = DateTime[DateTime_Second] - 60;
+            #end
+        #break
+    #end    
+#end
+
+// End DateTime_add
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// DateTime_sub(DateTime,ValueType,Value)
+//
+// Adds the given Value expressed as DateTime_Year, DateTime_Month, DateTime_Day
+// DateTime_Hour, DateTime_Minute, or DateTime_Second to the given DateTime
+//
+#macro DateTime_sub(DateTime,ValueType,Value)
+    #if (Value < 0)
+        #error concat("DateTime_sub: only positive values are allowed. Use DateTime_add for addition\n")
+    #end
+    
+    #switch(ValueType)
+        #case(DateTime_Year)
+            #local DateTime[DateTime_Year]  = DateTime[DateTime_Year] - Value; 
+        #break
+        
+        #case(DateTime_Month)
+            #local DateTime[DateTime_Month] = DateTime[DateTime_Month] - Value;
+            #while (DateTime[DateTime_Month] < 1)
+                DateTime_sub(DateTime,DateTime_Year,1)
+                #local DateTime[DateTime_Month] = DateTime[DateTime_Month] + 12;
+            #end
+        #break
+        
+        #case(DateTime_Day)
+            #local DateTime[DateTime_Day]   = DateTime[DateTime_Day] - Value;
+            #while (DateTime[DateTime_Day] < 1)
+                DateTime_sub(DateTime,DateTime_Month,1)
+                #local _monthdays               = DateTime_monthdays(DateTime);
+                #local DateTime[DateTime_Day]   = DateTime[DateTime_Day] + _monthdays;
+            #end    
+        #break
+        
+        #case(DateTime_Hour)
+            #local DateTime[DateTime_Hour]  = DateTime[DateTime_Hour] - Value;
+            #while (DateTime[DateTime_Hour] < 0)
+                DateTime_sub(DateTime,DateTime_Day,1)
+                #local DateTime[DateTime_Hour]  = DateTime[DateTime_Hour] + 24;
+            #end
+        #break
+        
+        #case(DateTime_Minute)
+            #local DateTime[DateTime_Minute]    = DateTime[DateTime_Minute] - Value;
+            #while (DateTime[DateTime_Minute] < 0)
+                DateTime_sub(DateTime,DateTime_Hour,1)
+                #local DateTime[DateTime_Minute]    = DateTime[DateTime_Minute] + 60;
+            #end
+        #break
+        
+        #case(DateTime_Second)
+            #local DateTime[DateTime_Second]    = DateTime[DateTime_Second] - Value;
+            #while (DateTime[DateTime_Second] < 0)
+                DateTime_sub(DateTime,DateTime_Minute,1)
+                #local DateTime[DateTime_Second]    = DateTime[DateTime_Second] + 60;
+            #end
+        #break
+    #end    
+#end
+
+// End DateTime_sub
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
