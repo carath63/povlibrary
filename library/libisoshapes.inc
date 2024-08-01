@@ -601,6 +601,10 @@
 //-----------------------------------------------------------------------------
 // Iso_egg()
 //
+// Note: The bounds for this object are:
+//  <-1.055, -1, -1.055>, <1.055, 1, 1.055>
+//  The max bulge is at y=0.7
+//
 #macro Iso_egg()
     #local _egg_fn  = function(x,y) {
         (x*x + pow(pow(1.4,x)*y,2)) - 1
