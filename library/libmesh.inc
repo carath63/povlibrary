@@ -294,14 +294,14 @@
             Mesh2.vcount,
             #for (i, 0, Mesh2.vcount-1, 1)
                 #ifdef (Mesh2.vertices[i].uv)
-                    #local _uv  = Mesh2.vertices[i].uv;
+                    #local _vuv  = Mesh2.vertices[i].uv;
                 #else
-                    #local _uv  = <0,0>;
+                    #local _vuv  = <0,0>;
                 #end
                 #if (i < Mesh2.vcount-1)
-                    _uv,
+                    _vuv,
                 #else
-                    _uv
+                    _vuv
                 #end                
             #end
         }
@@ -481,6 +481,163 @@
 //-----------------------------------------------------------------------------
 
 // End 2D Grid Meshes
+//=============================================================================
+
+//=============================================================================
+// 3D Grid Meshes:  This is a specialization of the Mesh2_dict that includes
+// 2 Plys of a rectangular grid of vertices that construct faces for the bottom
+// and top grids as a Mesh2_grid, but also include faces that tie the two
+// faces together.
+//
+
+//-----------------------------------------------------------------------------
+// Mesh2_3dgrid_create(GridSize, UVMapping, optional SheetSize, optional Smooth, optional DefaultNormal)
+//
+// SheetSize is now 3D, with the Y component representing the thickness of the sheet
+//
+#macro Mesh2_3dgrid_create(GridSize, UVMapping, optional SheetSize, optional Smooth, optional DefaultNormal)
+    #ifdef (local.DefaultNormal)
+        #local _nrm = DefaultNormal;
+    #else
+        #local _nrm = <0,1,0>;
+    #end
+    
+    #local _num_ply_vertices    = GridSize.x * GridSize.y;
+    #local _num_vertices        = 2 * _num_ply_vertices;        
+            
+    #local _dict    = dictionary {
+        .uvmapping: UVMapping,
+        .vertices:  array[_num_vertices],
+        .vcount:    _num_vertices,
+        .defaultNormal: _nrm,
+        .grid_size: GridSize,
+        .ply_offset:    _num_ply_vertices,
+        
+        // Added by Mesh2_dict_add_face
+        // .smooth_faces,
+        // .smooth_count
+        // .flat_faces,
+        // .flat_count
+    }
+    ;
+    
+    // Add in initial vertex points based on the sheet size
+    // if provided
+    
+    #ifdef (local.SheetSize)
+        #ifdef (local.Smooth)
+            #local _smooth  = Smooth;
+        #else
+            #local _smooth  = false;
+        #end
+        
+        #local _dict.sheet_size     = SheetSize;
+        #local _dict.smoothing      = _smooth;
+        
+        #local _box_size    = <SheetSize.x,SheetSize.z>/(GridSize - 1);
+        #local _box_size_3d = <_box_size.x, 0, _box_size.y>;
+        
+        #for (i, 0, GridSize.y-1, 1)
+            #for (j, 0, GridSize.x-1, 1)
+                #local _index   = i*GridSize.x + j;
+                #if (UVMapping)
+                    #local _uv  = <i,j>/(GridSize - 1);
+                #end
+                #local _pt  = <i,0,j>*_box_size_3d;
+                #local _dict.vertices[_index]   = Mesh2_vertex_create(_pt, _uv,);
+                
+                #local _index   = _num_ply_vertices + i*GridSize.x + j;
+                #local _pt  = _pt + <0, SheetSize.y, 0>;
+                #local _dict.vertices[_index]   = Mesh2_vertex_create(_pt, _uv,);
+            #end
+        #end    
+    
+    #end
+    
+    // Add in faces based on the grid
+    //
+    #for (i, 0, GridSize.y-2, 1)
+        #for (j, 0, GridSize.x-2, 1)
+            // Top ply faces
+            //
+            #local _fi  = <_num_ply_vertices + i*GridSize.x + j, _num_ply_vertices + i*GridSize.x + j + 1, _num_ply_vertices + (i+1)*GridSize.x + j + 1>;
+            Mesh2_dict_add_face(_dict, Mesh2_face_create(_fi,_smooth))
+            #local _fi  = <_num_ply_vertices + (i+1)*GridSize.x + j + 1, _num_ply_vertices + (i+1)*GridSize.x + j, _num_ply_vertices + i*GridSize.x + j>;
+            Mesh2_dict_add_face(_dict, Mesh2_face_create(_fi,_smooth))
+            
+            // Bottom ply faces
+            //
+            #local _fi  = <(i+1)*GridSize.x + j + 1, i*GridSize.x + j + 1, i*GridSize.x + j>;
+            Mesh2_dict_add_face(_dict, Mesh2_face_create(_fi,_smooth))
+            #local _fi  = <i*GridSize.x + j, (i+1)*GridSize.x + j, (i+1)*GridSize.x + j + 1>;
+            Mesh2_dict_add_face(_dict, Mesh2_face_create(_fi,_smooth))
+        #end
+    #end
+    
+    // Add in the side tying faces
+    //
+    #local _top_row_offset  = GridSize.x*(GridSize.y-1);
+    #for (j, 0, GridSize.x-2, 1)
+        #local _fi  = <j, j+1, _num_ply_vertices + j + 1>;
+        Mesh2_dict_add_face(_dict, Mesh2_face_create(_fi,_smooth))
+        #local _fi  = <_num_ply_vertices + j + 1, _num_ply_vertices + j, j>;
+        Mesh2_dict_add_face(_dict, Mesh2_face_create(_fi,_smooth))
+        
+        #local _fi  = <_top_row_offset + _num_ply_vertices + j + 1, _top_row_offset + j + 1, _top_row_offset + j>;
+        Mesh2_dict_add_face(_dict, Mesh2_face_create(_fi,_smooth))
+        #local _fi  = <_top_row_offset + j, _top_row_offset + _num_ply_vertices + j, _top_row_offset + _num_ply_vertices + j + 1>;
+        Mesh2_dict_add_face(_dict, Mesh2_face_create(_fi,_smooth))
+    #end
+    
+    #local _right_col_offset    = GridSize.x-1;
+    #for (i, 0, GridSize.y-2, 1)
+        #local _fi  = <i*GridSize.x, _top_row_offset + i*GridSize.x, (i+1)*GridSize.x>;
+        Mesh2_dict_add_face(_dict, Mesh2_face_create(_fi,_smooth))
+        #local _fi  = <_top_row_offset + i*GridSize.x, _top_row_offset + (i+1)*GridSize.x, (i+1)*GridSize.x>;
+        Mesh2_dict_add_face(_dict, Mesh2_face_create(_fi,_smooth))
+        
+        #local _fi  = <i*GridSize.x + _right_col_offset, _top_row_offset + i*GridSize.x + _right_col_offset, (i+1)*GridSize.x + _right_col_offset>;
+        Mesh2_dict_add_face(_dict, Mesh2_face_create(_fi,_smooth))
+        #local _fi  = <_top_row_offset + i*GridSize.x + _right_col_offset, _top_row_offset + (i+1)*GridSize.x + _right_col_offset, (i+1)*GridSize.x + _right_col_offset>;
+        Mesh2_dict_add_face(_dict, Mesh2_face_create(_fi,_smooth))
+    #end
+    
+    
+    _dict
+#end
+
+// End Mesh2_3dgrid_create
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh2_3dgrid_get_vertex(Mesh2,I,J,P)
+//
+#macro Mesh2_3dgrid_get_vertex(Mesh2,I,J,P)
+    #local _index   = Mesh2.ply_offset*P + I*Mesh2.grid_size.x + J;
+    #local _v       = Mesh2.vertices[_index];
+    
+    _v
+#end
+
+// End Mesh2_3dgrid_get_vertex
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh2_3dgrid_set_vertex(Mesh2,I,J,P,V)
+//
+#macro Mesh2_3dgrid_set_vertex(Mesh2,I,J,P,V)
+    #local _index   = Mesh2.ply_offset*P + I*Mesh2.grid_size.x + J;
+    #if (_index >= Mesh2.vcount)
+        #error concat("Mesh2_3dgrid_set_vertex(Mesh2,", str(I,0,0), ",", str(J,0,0), ",", str(P,0,0), ",V): Out of bounds\n")
+    #end    
+    #declare Mesh2.vertices[_index] = V;
+#end
+
+// End Mesh2_3dgrid_set_vertex
+//-----------------------------------------------------------------------------
+
+
+// End 3D Grid Meshes
 //=============================================================================
 
 #version Libmesh_Inc_Temp;
