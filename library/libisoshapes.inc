@@ -1746,6 +1746,220 @@
 // End Iso_fixed_2d_box
 //-----------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------
+// Iso_2d_triangle(P0,P1,P2)
+//
+// Adapted from: https://iquilezles.org/articles/distfunctions2d/
+//float sdTriangle( in vec2 p, in vec2 p0, in vec2 p1, in vec2 p2 )
+//{
+//    vec2 e0 = p1-p0, e1 = p2-p1, e2 = p0-p2;
+//    vec2 v0 = p -p0, v1 = p -p1, v2 = p -p2;
+//    vec2 pq0 = v0 - e0*clamp( dot(v0,e0)/dot(e0,e0), 0.0, 1.0 );
+//    vec2 pq1 = v1 - e1*clamp( dot(v1,e1)/dot(e1,e1), 0.0, 1.0 );
+//    vec2 pq2 = v2 - e2*clamp( dot(v2,e2)/dot(e2,e2), 0.0, 1.0 );
+//    float s = sign( e0.x*e2.y - e0.y*e2.x );
+//    vec2 d = min(min(vec2(dot(pq0,pq0), s*(v0.x*e0.y-v0.y*e0.x)),
+//                     vec2(dot(pq1,pq1), s*(v1.x*e1.y-v1.y*e1.x))),
+//                     vec2(dot(pq2,pq2), s*(v2.x*e2.y-v2.y*e2.x)));
+//    return -sqrt(d.x)*sign(d.y);
+//}
+#macro Iso_2d_triangle(P0,P1,P2)
+    #local _p0x = P0.x;
+    #local _p0y = P0.y;
+    #local _p1x = P1.x;
+    #local _p1y = P1.y;
+    #local _p2x = P2.x;
+    #local _p2y = P2.y;
+    
+    #local _e0      = P1 - P0;
+    #local _e0x     = _e0.x;
+    #local _e0y     = _e0.y;
+    #local _e0d2    = Iso_dot2_2d(_e0x,_e0y);
+    #local _e1      = P2 - P1;             
+    #local _e1x     = _e1.x;
+    #local _e1y     = _e1.y;
+    #local _e1d2    = Iso_dot2_2d(_e1x,_e1y);
+    #local _e2      = P0 - P2;             
+    #local _e2x     = _e2.x;
+    #local _e2y     = _e2.y;
+    #local _e2d2    = Iso_dot2_2d(_e2x,_e2y);
+    
+    #local _s   = Iso_sign(_e0.x*_e2.y - _e0.y*_e2.x);
+    
+    // _v0x = x - p0.x; _v0y = y - p0.y
+    // _v1x = x - p1.x; _v1y = y - p1.y
+    // _v2x = x - p2.x; _v2y = y - p2.y 
+    
+    #local _it_triangle_fn  = function(dx,dy) {
+        -sqrt(dx)*Iso_sign(dy)
+    }
+    
+    #local _it_dx_fn    = function(pq0x,pq0y,pq1x,pq1y,pq2x,pq2y) {
+        min(
+            Iso_dot2_2d(pq0x,pq0y),
+            Iso_dot2_2d(pq1x,pq1y),
+            Iso_dot2_2d(pq2x,pq2y)
+        )    
+    }
+    
+    #local _it_dy_fn    = function(v0x,v0y,v1x,v1y,v2x,v2y) {
+        min(
+            _s*(v0x*_e0y-v0y*_e0x),
+            _s*(v1x*_e1y-v1y*_e1x),
+            _s*(v2x*_e2y-v2y*_e2x)
+        )
+    }
+    
+    #local _it_pqx_fn   = function(vx,vy,ex,ey,ed2) {
+        vx - ex*Iso_clamp(Iso_dot_2d(vx,vy,ex,ey)/ed2), 0.0, 1.0)
+    }
+    
+    #local _it_pqy_fn   = function(vx,vy,ex,ey,ed2) {
+        vy - ey*Iso_clamp(Iso_dot_2d(vx,vy,ex,ey)/ed2), 0.0, 1.0)
+    }
+    
+    function(x,y) {
+        _it_triangle_fn(
+            _it_dx_fn(
+                _it_pqx_fn(x-_p0x,y-_p0y,_e0x,_e0y,_e0d2),
+                _it_pqy_fn(x-_p0x,y-_p0y,_e0x,_e0y,_e0d2),
+                _it_pqx_fn(x-_p1x,y-_p1y,_e1x,_e1y,_e1d2),
+                _it_pqy_fn(x-_p1x,y-_p1y,_e1x,_e1y,_e1d2),
+                _it_pqx_fn(x-_p2x,y-_p2y,_e2x,_e2y,_e2d2),
+                _it_pqy_fn(x-_p2x,y-_p2y,_e2x,_e2y,_e2d2)
+            ),
+            _it_dy_fn(
+                x-_p0x,
+                y-_p0y,
+                x-_p1x,
+                y-_p0y,
+                x-_p2x,
+                y-_p2y
+            )
+        )
+    }
+    
+#end
+
+// End Iso_2d_triangle
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_2d_equilateral_triangle(R)
+//
+// Adapted from: https://iquilezles.org/articles/distfunctions2d/
+//float sdEquilateralTriangle( in vec2 p, in float r )
+//{
+//    const float k = sqrt(3.0);
+//    p.x = abs(p.x) - r;
+//    p.y = p.y + r/k;
+//    if( p.x+k*p.y>0.0 ) p = vec2(p.x-k*p.y,-k*p.x-p.y)/2.0;
+//    p.x -= clamp( p.x, -2.0*r, 0.0 );
+//    return -length(p)*sign(p.y);
+//}
+#macro Iso_2d_equilateral_triangle(R)
+    #local _k   = sqrt(3.0);
+    
+    #local _i2et_triangle_fn    = function(px,py) {
+        -Iso_length_2d(px,py)*Iso_sign(py)
+    }
+    
+    #local _i2et_tmp2_fn    = function(px,py) {
+        _i2et_triangle_fn(
+            px - Iso_clamp(px, -2.0*R, 0.0),
+            py
+        )    
+    }
+    
+    #local _i2et_tmp1_fn    = function(px,py) {
+        select(-(px+_k*py),
+            _i2et_tmp2_fn((px-_k*py)/2,(-_k*px-py)/2),
+            _i2et_tmp2_fn(px,py)
+        )    
+    }
+    
+    function(x,y) {
+        _i2et_tmp1_fn(abs(x) - R, y + R/_k)
+    }
+    
+#end
+
+// End Iso_2d_equilateral_triangle
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_2d_isosceles_triangle(QX,QY)
+//
+// Adapted from: https://iquilezles.org/articles/distfunctions2d/
+//float sdTriangleIsosceles( in vec2 p, in vec2 q )
+//{
+//    p.x = abs(p.x);
+//    vec2 a = p - q*clamp( dot(p,q)/dot(q,q), 0.0, 1.0 );
+//    vec2 b = p - q*vec2( clamp( p.x/q.x, 0.0, 1.0 ), 1.0 );
+//    float s = -sign( q.y );
+//    vec2 d = min( vec2( dot(a,a), s*(p.x*q.y-p.y*q.x) ),
+//                  vec2( dot(b,b), s*(p.y-q.y)  ));
+//    return -sqrt(d.x)*sign(d.y);
+//}
+#macro Iso_2d_isosceles_triangle(QX,QY)
+    #local _qd2 = Iso_dot2_2d(QX,QY);
+    #local _s   = -Iso_sign(QY);
+    
+    #local _i2it_triangle_fn    = function(dx,dy) {
+        -sqrt(dx)*Iso_sign(dy)
+    }
+    
+    #local _i2it_dx_fn  = function(ax,ay,bx,by) {
+        min(Iso_dot2_2d(ax,ay), Iso_dot2_2d(bx,by))
+    }
+    
+    #local _i2it_dy_fn  = function(px,py) {
+        min(
+            _s*(px*QY-py*QX),
+            _s*(py-QY)
+        )    
+    }
+    
+    #local _i2it_ax_fn  = function(px,py) {
+        px - QX*Iso_clamp(Iso_dot_2d(px,py,QX,QY)/_qd2, 0.0, 1.0)
+    }
+    #local _i2it_ay_fn  = function(px,py) {
+        py - QY*Iso_clamp(Iso_dot_2d(px,py,QX,QY)/_qd2, 0.0, 1.0)
+    }                                                            
+    
+    #local _i2it_bx_fn  = function(px,py) {
+        px - QX*Iso_clamp(px/QX, 0.0, 1.0)
+    }
+    #local _i2it_by_fn  = function(px,py) {
+        py - QY
+    }
+    
+    #local _i2it_tmp2_fn    = function(px,py,ax,ay,bx,by) {
+        _i2it_triangle_fn(
+            _i2it_dx_fn(ax,ay,bx,by),
+            _i2it_dy_fn(px,py)
+        )    
+    }
+    
+    #local _i2it_tmp1_fn    = function(px,py) {
+        _i2it_tmp2_fn(
+            px,
+            py,
+            _i2it_ax_fn(px,py),
+            _i2it_ay_fn(px,py),
+            _i2it_bx_fn(px,py),
+            _i2it_by_fn(px,py)
+        )    
+    }
+    
+    function(x,y) {
+        _i2it_tmp1_fn(abs(x),y)
+    }
+    
+#end
+
+// End Iso_2d_isosceles_triangle
+//-----------------------------------------------------------------------------
 
 // End 2D Extrusion Functions
 //=============================================================================
