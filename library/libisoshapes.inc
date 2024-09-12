@@ -1859,6 +1859,7 @@
 //}
 #macro Iso_2d_equilateral_triangle(R)
     #local _k   = sqrt(3.0);
+    #local _ty  = R/_k;
     
     #local _i2et_triangle_fn    = function(px,py) {
         -Iso_length_2d(px,py)*Iso_sign(py)
@@ -1879,7 +1880,8 @@
     }
     
     function(x,y) {
-        _i2et_tmp1_fn(abs(x) - R, y + R/_k)
+        //_i2et_tmp1_fn(abs(x) - R, y + R/_k)
+        _i2et_tmp1_fn(abs(x) - R, y)
     }
     
 #end
@@ -1953,7 +1955,7 @@
     }
     
     function(x,y) {
-        _i2it_tmp1_fn(abs(x),y)
+        _i2it_tmp1_fn(abs(x),QY-y)
     }
     
 #end
