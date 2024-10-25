@@ -314,9 +314,9 @@
 // Iso_capped_cylinder()
 //
 #macro Iso_capped_cylinder()
-    #local _icc_cyl_fn  = function(x,y) {
-        min(max(x,y),0) +
-        Iso_length_2d(max(x,0),max(y,0))
+    #local _icc_cyl_fn  = function(dx,dy) {
+        min(max(dx,dy),0) +
+        Iso_length_2d(max(dx,0),max(dy,0))
     }
     function(x,y,z,r,h) {
         _icc_cyl_fn(
