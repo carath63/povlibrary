@@ -240,5 +240,58 @@
 // End Non-standard rotation order macros
 //=============================================================================
 
+//=============================================================================
+// Object testing macros
+//
+
+//-----------------------------------------------------------------------------
+// f_overlaps(min1,max1,min2,max2)
+// f_overlaps_2d(minx1,maxx1,miny1,maxy1,minx2,maxx2,miny2,maxy2)
+// f_overlaps_3d(minx1,maxx1,miny1,maxy1,minz1,maxz1,minx2,maxx2,miny2,maxy2,minz2,maxz2)
+//
+// Returns 1 if the numeric range [min1,max1] overlaps with the range [min2,max2]
+// else 0
+//
+#declare f_overlaps = function (min1,max1,min2,max2) {
+    select(min1 - max2,
+        select(min2 - max1,
+            1,
+            1,
+            0
+        ),
+        1,
+        0
+    )
+}
+
+#declare f_overlaps_2d  = function(minx1,maxx1,miny1,maxy1,minx2,maxx2,miny2,maxy2) {
+    f_overlaps(minx1,maxx1,minx2,maxx2) * f_overlaps(miny1,maxy1,miny2,maxy2)
+}
+
+#declare f_overlaps_3d  = function(minx1,maxx1,miny1,maxy1,minz1,maxz1,minx2,maxx2,miny2,maxy2,minz2,maxz2) {
+    f_overlaps(minx1,maxx1,minx2,maxx2) * f_overlaps(miny1,maxy1,miny2,maxy2) * f_overlaps(minz1,maxz1,minz2,maxz2)
+}
+
+// End f_overlaps
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Overlaps(Obj1,Obj2)
+//
+#macro Overlaps(Obj1,Obj2)
+    #local _min_ext1    = min_extent(Obj1);
+    #local _max_ext1    = max_extent(Obj1);
+    #local _min_ext2    = min_extent(Obj2);
+    #local _max_ext2    = max_extent(Obj2);
+
+    (f_overlaps_3d(_min_ext1.x,_max_ext1.x,_min_ext1.y,_max_ext1.y,_min_ext1.z,_max_ext1.z,_min_ext2.x,_max_ext2.x,_min_ext2.y,_max_ext2.y,_min_ext2.z,_max_ext2.z))
+#end
+
+// End Overlaps(Obj1,Obj2)
+//-----------------------------------------------------------------------------
+
+// End Object testing macros
+//=============================================================================
+
 #version Libgeom_Inc_Temp;
 #end // ifndef(Libgeom_Inc_Temp)

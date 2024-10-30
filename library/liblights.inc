@@ -48,6 +48,7 @@
         Light_Color(Lct,Lm)
         spotlight radius Radius falloff Falloff tightness Tightness point_at PointAt
         //Light_Spot_Cos_Falloff(PointAt)
+        #debug concat("Lights_spotlight: PointAt=<", vstr(3, PointAt, ",", 0, 3), ">\n")
         #if (Cnt > 1)
             #local _ala1    = Sz*x;
             #local _ala2    = Sz*z;
@@ -55,7 +56,6 @@
             #local _xrot    = #if(PointAt.y = 0 & _len = 0) 0; #else -degrees(atan2(_len,-PointAt.y)); #end
             #local _yrot    = #if(PointAt.x = 0 & PointAt.z = 0) 0; #else degrees(atan2(PointAt.x,PointAt.z)); #end
             
-            #debug concat("Lights_spotlight: PointAt=<", vstr(3, PointAt, ",", 0, 3), ">\n")
             #debug concat("Lights_spotlight: _xrot=", str(_xrot, 0, 3), "; _yrot=", str(_yrot, 0, 3), "\n")
             
             #local _ala1    = vrotate(_ala1, <_xrot, _yrot, 0>);
