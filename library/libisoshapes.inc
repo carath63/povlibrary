@@ -74,10 +74,55 @@
 //=============================================================================
 
 //=============================================================================
-// Iso Sphere Functions
+// Iso Plane Functions
 //
 // Exact distance functions for spheres adapted 
 // from: https://iquilezles.org/articles/distfunctions/
+// Exact distance functions for spheres adapted 
+// from: https://iquilezles.org/articles/distfunctions/
+//
+//float sdPlane( vec3 p, vec3 n, float h )
+//{
+//  // n must be normalized
+//  return dot(p,n) + h;
+//}
+
+//-----------------------------------------------------------------------------
+// Iso_plane()
+//
+#macro Iso_plane()
+    function(px,py,pz,nx,ny,nz,h) {
+        Iso_dot_3d(px,py,pz,nx,ny,nz) + h
+    }
+#end
+
+// End Iso_plane
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_plane(Normal,H)
+//
+#macro Iso_fixed_plane(Normal,H)
+    #local _ifp_plane_fn    = Iso_plane()
+    
+    #local _nrm = vnormalize(Normal);
+    #local _nx  = _nrm.x;
+    #local _ny  = _nrm.y;
+    #local _nz  = _nrm.z;
+    
+    function(x,y,z) {
+        _ifp_plane_fn(x,y,z,_nx,_ny,_nz,H)
+    }
+#end
+
+// End Iso_fixed_plane
+//-----------------------------------------------------------------------------
+
+// End Iso Plane Functions
+//=============================================================================
+
+//=============================================================================
+// Iso Sphere Functions
 //
 
 //-----------------------------------------------------------------------------
@@ -386,7 +431,7 @@
     #local _ifrc_cyl_fn = Iso_rounded_cylinder()
     #local _h           = Height/2;
     function(x,y,z) {
-        _ifrc_cyl_fn(x,y,z,Radius,_h,Rnd)
+        _ifrc_cyl_fn(x,y,z,Radius,_h-Rnd,Rnd)
     }
 #end
 
