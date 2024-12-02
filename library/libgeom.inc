@@ -293,5 +293,164 @@
 // End Object testing macros
 //=============================================================================
 
+//=============================================================================
+// Bounding Box Macros
+//
+#declare Bounding_box_null  = dictionary { .dims: 0 };
+
+//-----------------------------------------------------------------------------
+// Bounding_box_create(dims,minex,maxex)
+//
+#macro Bounding_box_create(dims,minex,maxex)
+    dictionary {
+        .dims:      dims,
+        .min_ext:   minex,
+        .max_ext:   maxex
+    }
+#end
+
+// End Bounding_box_create
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Bounding_box_from_obj(Obj)
+//
+#macro Bounding_box_from_obj(Obj)
+    Bounding_box_create(3,min_extent(Obj),max_extent(Obj))
+#end
+
+// End Bounding_box_from_obj
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Bounding_box_size(BBox)
+//
+#macro Bounding_box_size(BBox)
+    #if (BBox.dims = 0)
+        #local _sz  = 0;
+    #else    
+        #local _sz  = (BBox.max_ext - BBox.min_ext);
+    #end                                            
+    
+    _sz
+#end
+
+// End Bounding_box_size
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Bounding_box_union(BBox1,BBox2)
+//
+#macro Bounding_box_union(BBox1,BBox2)
+    #if (BBox1.dims != BBox2.dims)
+        #error concat("Bounding_box_union: mismatched dimensions: ", str(BBox1.dims,0,0), " and ", str(BBox2.dims,0,0), "\n")
+    #end
+    #switch(BBox1.dims)
+        #case(2)
+            #local _min = <min(BBox1.min_ext.x,BBox2.min_ext.x),min(BBox1.min_ext.y,BBox2.min_ext.y)>;
+            #local _max = <max(BBox1.max_ext.x,BBox2.max_ext.x),max(BBox1.max_ext.y,BBox2.max_ext.y)>;
+        #break
+        
+        #case(3)
+            #local _min = <min(BBox1.min_ext.x,BBox2.min_ext.x),min(BBox1.min_ext.y,BBox2.min_ext.y),min(BBox1.min_ext.z,BBox2.min_ext.z)>;
+            #local _max = <max(BBox1.max_ext.x,BBox2.max_ext.x),max(BBox1.max_ext.y,BBox2.max_ext.y),max(BBox1.max_ext.z,BBox2.max_ext.z)>;
+        #break
+    #end
+    
+    Bounding_box_create(BBox1.dims,_min,_max)    
+#end
+
+// End Bounding_box_union
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Bounding_box_intersection(BBox1,BBox2)
+//
+#macro Bounding_box_intersection(BBox1,BBox2)
+    #if (BBox1.dims != BBox2.dims)
+        #error concat("Bounding_box_intersection: mismatched dimensions: ", str(BBox1.dims,0,0), " and ", str(BBox2.dims,0,0), "\n")
+    #end
+    
+    #local _intersection    = Bounding_box_null;
+    #if (BBox2.max_ext.x >= BBox1.min_ext.x & BBox2.min_ext.x <= BBox1.max_ext.x)
+        #if (BBox2.max_ext.y >= BBox1.min_ext.y & BBox2.min_ext.y <= BBox1.max_ext.y)
+            #if (BBox1.dims > 2)
+                #if (BBox2.max_ext.z >= BBox1.min_ext.z & BBox2.min_ext.z <= BBox1.max_ext.z)
+                    #local _min = <max(BBox1.min_ext.x,BBox2.min_ext.x),max(BBox1.min_ext.y,BBox2.min_ext.y),max(BBox1.min_ext.z,BBox2.min_ext.z)>;
+                    #local _max = <min(BBox1.max_ext.x,BBox2.max_ext.x),min(BBox1.max_ext.y,BBox2.max_ext.y),min(BBox1.max_ext.z,BBox2.max_ext.z)>;
+                    #local _intersection    = Bounding_box_create(BBox1.dims,_min,_max);
+                #end
+            #else
+                #local _min = <max(BBox1.min_ext.x,BBox2.min_ext.x),max(BBox1.min_ext.y,BBox2.min_ext.y)>;
+                #local _max = <min(BBox1.max_ext.x,BBox2.max_ext.x),min(BBox1.max_ext.y,BBox2.max_ext.y)>;
+                #local _intersection    = Bounding_box_create(BBox1.dims,_min,_max);
+            #end
+        #end
+    #end
+    
+    _intersection
+    
+#end
+
+// End Bounding_box_intersection
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Bounding_box_subtraction(BBox1,BBox2)
+//
+#macro Bounding_box_subtraction(BBox1,BBox2)
+    #if (BBox1.dims != BBox2.dims)
+        #error concat("Bounding_box_subtraction: mismatched dimensions: ", str(BBox1.dims,0,0), " and ", str(BBox2.dims,0,0), "\n")
+    #end
+    
+    #local _intersection    = Bounding_box_intersection(BBox1,BBox2);
+    #if (_intersection.dims = 0)
+        #local _subtraction = BBox1;
+    #else                           
+        #local _dx_min  = _intersection.min_ext.x - BBox1.min_ext.x;
+        #local _dx_max  = BBox1.max_ext.x - _intersection.max_ext.x;
+        #if (_dx_min >= _dx_max)
+            #local _sx_min  = BBox1.min_ext.x;
+            #local _sx_max  = _intersection.min_ext.x;
+        #else                                         
+            #local _sx_min  = _intersection.max_ext.x;
+            #local _sx_max  = BBox1.max_ext.x;
+        #end
+        
+        #local _dy_min  = _intersection.min_ext.y - BBox1.min_ext.y;
+        #local _dy_max  = BBox1.max_ext.y - _intersection.max_ext.y;
+        #if (_dy_min >= _dy_max)
+            #local _sy_min  = BBox1.min_ext.y;
+            #local _sy_max  = _intersection.min_ext.y;
+        #else                                         
+            #local _sy_min  = _intersection.max_ext.y;
+            #local _sy_max  = BBox1.max_ext.y;
+        #end
+        
+        #if (BBox1.dims > 2)
+            #local _dz_min  = _intersection.min_ext.z - BBox1.min_ext.z;
+            #local _dz_max  = BBox1.max_ext.z - _intersection.max_ext.z;
+            #if (_dz_min >= _dz_max)
+                #local _sz_min  = BBox1.min_ext.z;
+                #local _sz_max  = _intersection.min_ext.z;
+            #else                                         
+                #local _sz_min  = _intersection.max_ext.z;
+                #local _sz_max  = BBox1.max_ext.z;
+            #end
+            #local _subtraction = Bounding_box_create(BBox1.dims,<_sx_min,_sy_min,_sz_min>,<_sx_max,_sy_max,_sz_max>);
+        #else
+            #local _subtraction = Bounding_box_create(BBox1.dims,<_sx_min,_sy_min>,<_sx_max,_sy_max>);
+        #end
+    #end
+    
+    _subtraction
+#end
+
+// End Bounding_box_subtraction
+//-----------------------------------------------------------------------------
+
+// End Bounding Box Macros
+//=============================================================================
+
 #version Libgeom_Inc_Temp;
 #end // ifndef(Libgeom_Inc_Temp)

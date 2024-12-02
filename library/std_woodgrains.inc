@@ -256,6 +256,58 @@
 //=============================================================================
 
 //=============================================================================
+// Ash
+//
+#declare Ash_min_trunk_diameter    = Math_Scale(SCALE_FEET, 1);
+#declare Ash_max_trunk_diameter    = Math_Scale(SCALE_FEET, 2);
+#declare Ash_min_trunk_length      = Math_Scale(SCALE_FEET, 50);
+#declare Ash_max_trunk_length      = Math_Scale(SCALE_FEET, 65);
+#declare Ash_grain_size            = Math_Scale(SCALE_INCH, 2);   // Based on the width of the colormap
+#declare Ash_colormap_file        = "woodgrains/ash-colors.jpg";
+#declare Ash_colormap_start       = 0.0;
+#declare Ash_colormap_end         = 0.99;
+#declare Ash_colormap_entries     = 24; 
+
+
+//-----------------------------------------------------------------------------
+// Ash_grain(RStream)
+//
+#macro Ash_grain(RStream)
+    #local _grain   = pigment {
+        wood
+        color_map {
+            [0.0 rgb 0]
+            [1.0 rgb 1]
+        }
+        #local _s   = Math_Scale(SCALE_CM, <0.1, 0.1, 0.0025>);
+        scale _s warp { turbulence 0.05*(1+0.1*SRand(RStream))*<1,1,1> lambda 3 omega 0.6 octaves 8 } scale 1/_s
+        #local _s   = 4*Math_Scale(SCALE_CM, <1, 1, 0.0125>);
+        scale _s warp { turbulence 0.2*(1+0.1*SRand(RStream)) lambda 24 omega 1.1 } scale 1/_s
+        rotate <0.6+0.1*SRand(RStream), 0, 0>
+        scale <Ash_grain_size, Ash_grain_size, 1>*(1 + 0.1*SRand(RStream))
+    }
+    
+    _grain
+
+#end
+
+// End Ash_grain
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Ash_cmap_create()
+//
+#macro Ash_cmap_create()
+    Wood_cmap_create(Ash_colormap_file,Ash_colormap_start,Ash_colormap_end,Ash_colormap_entries)
+#end    
+
+// End Ash_cmap_create
+//-----------------------------------------------------------------------------
+
+// End Ash
+//=============================================================================
+
+//=============================================================================
 // Aromatic Red Cedar
 //
 
