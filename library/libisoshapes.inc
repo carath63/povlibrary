@@ -1480,6 +1480,79 @@
 //=============================================================================
 
 //=============================================================================
+// Helix Functions
+//
+
+//-----------------------------------------------------------------------------
+// Iso_helix1(Dir)
+//
+#declare Iso_helix_dir_clockwise        = 0;
+#declare Iso_helix_dir_counterclockwise = 1;
+#macro Iso_helix1(Dir)
+    #local _ih_circle_fn    = function(qx,qy,r) {
+        Iso_length_2d(qx,qy) - r
+    }
+    
+    #local _ih_qy_fn    = function(y,rise) {
+        y - 
+        (
+            select(y,
+                int(y/rise - 0.5)*rise,
+                int(y/rise + 0.5)*rise
+            )
+        )        
+    }
+    
+    #switch(Dir)
+        #case(Iso_helix_dir_clockwise)
+            #local _ih_sy_fn    = function(x,z,rise) {
+                rise*f_normalized_atan2(x,z)/(2*pi)
+            }    
+        #break
+        #case(Iso_helix_dir_counterclockwise)
+            #local _ih_sy_fn    = function(x,z,rise) {
+                rise*f_normalized_atan2(z,x)/(2*pi)
+            }    
+        #break
+        #else
+            #error concat("Iso_helix1: Invalid Dir ", str(Dir, 0, 3), "\n")
+        #break    
+    #end
+    
+    #local _ih_fn2  = function(x,y,z,r1,r2,rise) {
+        _ih_circle_fn(
+            Iso_length_2d(x,z) - r1,
+            y,
+            r2
+        )    
+    }
+    
+    function(x,y,z,r1,r2,rise) {
+        _ih_fn2(x,_ih_qy_fn(y-_ih_sy_fn(x,z,rise),rise),z,r1,r2,rise)
+    }    
+#end
+
+// End Iso_helix1
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_helix1(Radius1,Radius2,Rise,Dir)
+//
+#macro Iso_fixed_helix1(Radius1,Radius2,Rise,Dir)
+    #local _ifh_helix_fn    = Iso_helix1(Dir)
+    
+    function(x,y,z) {
+        _ifh_helix_fn(x,y,z,Radius1,Radius2,Rise)
+    }
+#end
+
+// End Iso_fixed_helix1
+//-----------------------------------------------------------------------------
+
+// End Helix Functions
+//=============================================================================
+
+//=============================================================================
 // Iso_extrusion(Primitive2DFn)
 //      Returns function(x,y,z,h) that computes the distance from the surface of
 // a 3D object created by extruding the given 2D shape function along the Z axis
