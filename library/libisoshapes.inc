@@ -1519,7 +1519,7 @@
         #break    
     #end
     
-    #local _ih_fn2  = function(x,y,z,r1,r2,rise) {
+    #local _ih_fn2  = function(x,y,z,r1,r2) {
         _ih_circle_fn(
             Iso_length_2d(x,z) - r1,
             y,
@@ -1528,7 +1528,7 @@
     }
     
     function(x,y,z,r1,r2,rise) {
-        _ih_fn2(x,_ih_qy_fn(y-_ih_sy_fn(x,z,rise),rise),z,r1,r2,rise)
+        _ih_fn2(x,_ih_qy_fn(y-_ih_sy_fn(x,z,rise),rise),z,r1,r2)
     }    
 #end
 
@@ -1547,6 +1547,74 @@
 #end
 
 // End Iso_fixed_helix1
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_helix_extrusion(Dir,SDF)
+//
+// Create a helix SDF(x,y) in the given direction using the provided SDF as the
+// 2D shape to be extruded along the path of the helix.
+//
+// Iso_helix1 is equivalent to Iso_helix_extrusion(Dir,Iso_fixed_2d_circle)
+//
+#macro Iso_helix_extrusion(Dir,SDF)
+    #local _ih_circle_fn    = function(qx,qy,r) {
+        Iso_length_2d(qx,qy) - r
+    }
+    
+    #local _ih_qy_fn    = function(y,rise) {
+        y - 
+        (
+            select(y,
+                int(y/rise - 0.5)*rise,
+                int(y/rise + 0.5)*rise
+            )
+        )        
+    }
+    
+    #switch(Dir)
+        #case(Iso_helix_dir_clockwise)
+            #local _ih_sy_fn    = function(x,z,rise) {
+                rise*f_normalized_atan2(x,z)/(2*pi)
+            }    
+        #break
+        #case(Iso_helix_dir_counterclockwise)
+            #local _ih_sy_fn    = function(x,z,rise) {
+                rise*f_normalized_atan2(z,x)/(2*pi)
+            }    
+        #break
+        #else
+            #error concat("Iso_helix1: Invalid Dir ", str(Dir, 0, 3), "\n")
+        #break    
+    #end
+    
+    #local _ih_fn2  = function(x,y,z,r1) {
+        SDF(
+            Iso_length_2d(x,z) - r1,
+            y
+        )    
+    }
+    
+    function(x,y,z,r1,rise) {
+        _ih_fn2(x,_ih_qy_fn(y-_ih_sy_fn(x,z,rise),rise),z,r1)
+    }    
+#end
+
+// End Iso_helix_extrusion
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_helix_extrusion(Radius,Rise,Dir,SDF)
+//
+#macro Iso_fixed_helix_extrusion(Radius,Rise,Dir,SDF)
+    #local _ifhe_helix_fn   = Iso_helix_extrusion(Dir,SDF)
+    
+    function(x,y,z) {
+        _ifhe_helix_fn(x,y,z,Radius,Rise)
+    }
+#end
+
+// End Iso_fixed_helix_extrusion
 //-----------------------------------------------------------------------------
 
 // End Helix Functions
@@ -1828,6 +1896,31 @@
 //=============================================================================
 // 2D Extrusion Functions
 //
+
+//-----------------------------------------------------------------------------
+// Iso_2d_circle()
+//
+#macro Iso_2d_circle()
+    function(x,y,r) {
+        Iso_length_2d(x,y) - r
+    }
+#end
+
+// End Iso_2d_circle
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_2d_circle(Radius)
+//
+#macro Iso_fixed_2d_circle(Radius)
+    #local _if2c_circle_fn  = Iso_2d_circle()
+    function(x,y) {
+        _if2c_circle_fn(x,y,Radius)
+    }
+#end
+
+// End Iso_fixed_2d_circle
+//-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
 // Iso_2d_box()
