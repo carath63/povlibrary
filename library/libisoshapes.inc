@@ -46,6 +46,10 @@
     x1*x2+y1*y2
 }
 
+#declare Iso_ndot_2d    = function(x1,y1,x2,y2) {
+    x1*x2 - y1*y2
+}    
+
 #declare Iso_dot_3d = function(x1,y1,z1,x2,y2,z2) {
     x1*x2+y1*y2+z1*z2
 }
@@ -56,10 +60,6 @@
 
 #declare Iso_dot2_3d    = function(x,y,z) {
     Iso_dot_3d(x,y,z,x,y,z)
-}
-
-#declare Iso_ndot_2d    = function(x1,y1,x2,y2) {
-    x1*x2 - y1*y2
 }
 
 #declare Iso_sign   = function(v) {
@@ -1558,10 +1558,6 @@
 // Iso_helix1 is equivalent to Iso_helix_extrusion(Dir,Iso_fixed_2d_circle)
 //
 #macro Iso_helix_extrusion(Dir,SDF)
-    #local _ih_circle_fn    = function(qx,qy,r) {
-        Iso_length_2d(qx,qy) - r
-    }
-    
     #local _ih_qy_fn    = function(y,rise) {
         y - 
         (
@@ -1686,8 +1682,15 @@
 //    return primitive(q)
 //}
 #macro Iso_rotation(Primitive2DFn)
+    function(x,y,z,o) {
+        Primitive2DFn(Iso_length_2d(x,z)-o,y)
+    }    
+#end
+
+#macro Iso_fixed_rotation(Primitive2DFn,Radius)
+    #local _ifr_fn  = Iso_rotation(Primitive2DFn)
     function(x,y,z) {
-        Primitive2DFn(Iso_length_2d(x,z),y)
+        _ifr_fn(x,y,z,Radius)
     }    
 #end
 
@@ -1923,6 +1926,31 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+// Iso_2d_ellipse()
+//
+#macro Iso_2d_ellipse()
+    function(x,y,a,b) {
+        Iso_length_2d(x/a,y/b) - 1
+    }
+#end
+
+// End Iso_2d_ellipse
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_2d_ellipse(Radius)
+//
+#macro Iso_fixed_2d_ellipse(Radius)
+    #local _if2c_ellipse_fn  = Iso_2d_ellipse()
+    function(x,y) {
+        _if2c_ellipse_fn(x,y,Radius)
+    }
+#end
+
+// End Iso_fixed_2d_ellipse
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // Iso_2d_box()
 //      Returns function(x,y,xs,ys) that computes the distance from the edges of
 // a 2D box scaled by xs and ys.
@@ -1955,6 +1983,200 @@
 #end
 
 // End Iso_fixed_2d_box
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_2d_rhombus()
+//      Returns function(x,y,xs,ys) that computes the distance from the edges of
+//   2D rhombus scaled by xs and ys
+//
+#macro Iso_2d_rhombus()
+    #local _ir_rhombus_fn   = function(x,y,sx,sy,d) {
+        d*Iso_sign(x*sy+y*sx - sx*sy)
+    }
+    
+    #local _ir_h_fn = function(ax,ay,sx,sy) {
+        Iso_clamp(Iso_ndot_2d(sx-2.0*ax,sy-2.0*ay,sx,sy)/Iso_dot2_2d(sx,sy), -1.0, 1.0)
+    }
+    
+    #local _ir_d_fn = function(ax,ay,sx,sy,h) {
+        Iso_length_2d(ax-0.5*sx*(1.0-h),ay-0.5*sy*(1.0+h))
+    }
+    
+    #local _ir_fn2  = function(ax,ay,sx,sy) {
+        _ir_rhombus_fn(ax,ay,sx,sy,_ir_d_fn(ax,ay,sx,sy,_ir_h_fn(ax,ay,sx,sy)))
+    }
+    
+    function(x,y,sx,sy) {
+        _ir_fn2(abs(x),abs(y),sx,sy)
+    }
+    
+#end
+
+// End Iso_2d_rhombus
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_2d_rhombus(SX,SY)
+//
+#macro Iso_fixed_2d_rhombus(SX,SY)
+    #local _ifr_rhombus_fn  = Iso_2d_rhombus()
+    
+    function(x,y) {
+        _ifr_rhombus_fn(x,y,SX,SY)
+    }
+#end
+
+// End Iso_fixed_2d_rhombus(SX,SY)
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_2d_isosceles_trapezoid()
+//
+#macro Iso_2d_isosceles_trapezoid()
+    #local _it_trap_fn  = function(cax,cay,cbx,cby,s) {
+        s*sqrt(min(Iso_dot2_2d(cax,cay),Iso_dot2_2d(cbx,cby)))
+    }
+    
+    #local _it_s_fn = function(cbx,cay) {
+        select(cbx,
+            select(cay,
+                -1,
+                1
+            ),
+            1
+        )        
+    }    
+    
+    #local _it_cax_fn   = function(px,py,r1,r2) {
+        px -
+            min(
+                px,
+                select(py,r1,r2)
+            )     
+    }
+    
+    #local _it_cay_fn   = function(py,h) {
+        abs(py) - h
+    }
+    
+    #local _it_cbx_fn   = function(px,py,k1x,k1y,k2x,k2y) {
+        px - k1x + k2x*Iso_clamp(Iso_dot_2d(k1x-px,k1y-py,k2x,k2y)/Iso_dot2_2d(k2x,k2y), 0.0, 1.0)
+    }
+    #local _it_cby_fn   = function(px,py,k1x,k1y,k2x,k2y) {
+        py - k1y + k2y*Iso_clamp(Iso_dot_2d(k1x-px,k1y-py,k2x,k2y)/Iso_dot2_2d(k2x,k2y), 0.0, 1.0)
+    }
+    #local _it_fn2  = function(cax,cay,cbx,cby) {
+        _it_trap_fn(cax,cay,cbx,cby,_it_s_fn(cbx,cay))
+    }
+    
+    function(x,y,r1,r2,h) {
+        _it_fn2(
+            _it_cax_fn(abs(x),y,r1,r2),
+            _it_cay_fn(y,h),
+            _it_cbx_fn(abs(x),y,r2,h,r2-r1,2.0*h),
+            _it_cby_fn(abs(x),y,r2,h,r2-r1,2.0*h)
+        )    
+    }
+#end
+
+// End Iso_2d_isosceles_trapezoid
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_2d_isosceles_trapezoid(R1,R2,H)
+//
+#macro Iso_fixed_2d_isosceles_trapezoid(R1,R2,H)
+    #local _ifit_fn = Iso_2d_isosceles_trapezoid()
+    
+    function(x,y) {
+        _ifit_fn(x,y,R1,R2,H)
+    }
+#end
+
+// End Iso_fixed_2d_isosceles_trapezoid
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_2d_parallelogram()
+//
+#macro Iso_2d_parallelogram()
+    #local _ip_fn7 = function(dx,dy) {
+        sqrt(dx)*Iso_sign(-dy)
+    }
+    
+    #local _ip_fn6  = function(dx,dy,vx,vy,wi,he,s) {
+        _ip_fn7(
+            min(dx,Iso_dot2_2d(vx,vy)),    
+            min(dy, wi*he-abs(s))
+        )
+    }
+    
+    #local _ip_fn5  = function(px,py,wi,he,sk,dx,dy,s) {
+        _ip_fn6(dx,dy,
+            px - wi - sk*Iso_clamp(Iso_dot_2d(px-wi,py,sk,he)/Iso_dot2_2d(sk,he),-1.0,1.0),
+            py - he*Iso_clamp(Iso_dot_2d(px-wi,py,sk,he)/Iso_dot2_2d(sk,he),-1.0,1.0),
+            wi,
+            he,
+            s
+        )    
+    }
+    
+    #local _ip_fn4  = function(px,py,wi,he,sk,dx,dy,s) {
+        _ip_fn5(
+            select(s,-px,px),
+            select(s,-py,py),
+            wi,he,sk,dx,dy,s
+        )    
+    }
+    
+    #local _ip_fn3  = function(px,py,wi,he,sk,dx,dy) {
+        _ip_fn4(px,py,wi,he,sk,dx,dy,
+            px*he - py*sk
+        )    
+    }
+    
+    #local _ip_fn2  = function(px,py,wi,he,sk,wx,wy) {
+        _ip_fn3(px,py,wi,he,sk,
+            Iso_dot2_2d(wx,wy),
+            -wy
+        )    
+    }
+    
+    #local _ip_fn1  = function(px,py,wi,he,sk) {
+        _ip_fn2(px,py,wi,he,sk,
+            (px-sk-Iso_clamp(px-sk,-wi,wi)),
+            (py-he)
+        )    
+    }
+    
+    function(x,y,wi,he,sk) {
+        _ip_fn1(
+            select(y,-x,x),
+            select(y,-y,y),
+            wi,
+            he,
+            sk
+        )    
+    }
+    
+#end
+
+// End Iso_2d_parallelogram
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_2d_parallelogram(WS,HS,SKEW)
+//
+#macro Iso_fixed_2d_parallelogram(WS,HS,SKEW)
+    #local _ifp_fn  = Iso_2d_parallelogram()
+    
+    function(x,y) {
+        _ifp_fn(x,y,WS,HS,SKEW)
+    }
+#end
+
+// End Iso_fixed_2d_parallelogram
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
@@ -2172,6 +2394,114 @@
 #end
 
 // End Iso_2d_isosceles_triangle
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_2d_uneven_capsule()
+//
+#macro Iso_2d_uneven_capsule()
+    
+    #local _uc_fn4  = function(px,py,r1,r2,h,b,a,k) {
+        select(k,
+            Iso_length_2d(px,py) - r1,
+            select(a*h - k,
+                Iso_length_2d(px,py-h) - r2,
+                Iso_dot_2d(px,py,a,b) - r1
+            )
+        )        
+    }
+    
+    #local _uc_fn3  = function(px,py,r1,r2,h,b,a) {
+        _uc_fn4(px,py,r1,r2,h,b,a,
+            Iso_dot_2d(px,py,-b,a)
+        )    
+    }
+    
+    #local _uc_fn2  = function(px,py,r1,r2,h,b) {
+        _uc_fn3(px,py,r1,r2,h,b,
+            sqrt(1-b*b)
+        )        
+    }
+    
+    #local _uc_fn1  = function(px,py,r1,r2,h) {
+        _uc_fn2(px,py,r1,r2,h,(r1-r2)/h)
+    }
+    
+    function(x,y,r1,r2,h) {
+        _uc_fn1(abs(x),y,r1,r2,h)
+    }
+#end                       
+
+// End Iso_2d_uneven_capsule
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_2d_uneven_capsule(R1,R2,HS)
+//
+#macro Iso_fixed_2d_uneven_capsule(R1,R2,HS)
+    #local _ifuc_fn = Iso_2d_uneven_capsule()
+    function (x,y) {
+        _ifuc_fn(x,y,R1,R2,HS)
+    }
+#end
+
+// End Iso_fixed_2d_uneven_capsule
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_2d_regular_pentagon()
+//
+#macro Iso_2d_regular_pentagon()
+    #local _kx  = 0.809016994;
+    #local _ky  = 0.587785252;
+    #local _kz  = 0.726542528; 
+    
+    #local _rp_fn4  = function(px,py) {
+        Iso_length_2d(px,py)*Iso_sign(py)
+    }
+    
+    #local _rp_fn3  = function(px,py,r) {
+        _rp_fn4(
+            px - Iso_clamp(px,-r*_kz,r*_kz),
+            py - r
+        )    
+    }
+    
+    #local _rp_fn2  = function(px,py,r) {
+        _rp_fn3(
+            px - 2.0*min(Iso_dot_2d(_kx,_ky,px,py),0.0)*_kx,
+            py - 2.0*min(Iso_dot_2d(_kx,_ky,px,py),0.0)*_ky,
+            r
+        )    
+    }
+    
+    #local _rp_fn1  = function(px,py,r) {
+        _rp_fn2(
+            px - 2.0*min(Iso_dot_2d(-_kx,_ky,px,py),0.0)*(-_kx),
+            py - 2.0*min(Iso_dot_2d(-_kx,_ky,px,py),0.0)*_ky,
+            r
+        )    
+    }
+    
+    function(x,y,r) {
+        _rp_fn1(abs(x),y,r)
+    }
+#end
+
+// End Iso_2d_regular_pentagon
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_2d_regular_pentagon(R)
+//
+#macro Iso_fixed_2d_regular_pentagon(R)
+    #local _frp_fn  = Iso_2d_regular_pentagon()
+    function(x,y) {
+        _frp_fn(x,y,R)
+    }    
+#end
+
+// End Iso_fixed_2d_regular_pengagon
 //-----------------------------------------------------------------------------
 
 // End 2D Extrusion Functions
