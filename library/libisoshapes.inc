@@ -76,6 +76,13 @@
 
 #declare Iso_mat2x2_mult_y  = function(v11,v12,v21,v22,x,y) {
     v12*x+v22*y
+}
+
+#declare Iso_round  = function(v) {
+    select(v,
+        int(v - 0.5),
+        int(v + 0.5)
+    )    
 }        
 
 // End Iso utility functions
@@ -1763,6 +1770,30 @@
 #end
 
 // End Iso_fixed_2d_rounding
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_2d_annular(Primitive2DFn)
+//
+#macro Iso_2d_annular(Primitive2DFn)
+    function(x,y,r) {
+        abs(Primitive2DFn(x,y)) - r
+    }
+#end
+
+// End Iso_2d_annular
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_2d_annular(Primitive2DFn,R)
+//
+#macro Iso_fixed_2d_annular(Primitive2DFn,R)
+    function(x,y) {
+        abs(Primitive2DFn(x,y)) - R
+    }    
+#end
+
+// End Iso_fixed_2d_annular
 //-----------------------------------------------------------------------------
 
 // End Iso_rounding,Iso_fixed_rounding
@@ -3626,7 +3657,129 @@ float sdHexagon( in vec2 p, in float r )
     }    
 #end
 
-// End Iso_Fixed_2d_ellipse
+// End Iso_fixed_2d_ellipse
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_2d_parabola()
+//
+#macro Iso_2d_parabola()
+    
+    #local _ip_fn5  = function(px,py,k,x2) {
+        Iso_length_2d(px-x2,py-k*x2*x2)*Iso_sign(px-x2)
+    }
+    
+    #local _k3  = 1.0/3.0;
+    
+    #local _ip_fn4  = function(px,py,k,p,q,h,r) {
+        _ip_fn5(px,py,k,
+            select(h,
+                2.0*cos(atan2(r,q)/3.0)*sqrt(p),
+                pow(q+r,_k3) - pow(abs(q-r),_k3)*Iso_sign(r-q)
+            )    
+        )
+    }
+    
+    #local _ip_fn3  = function(px,py,k,p,q,h) {
+        _ip_fn4(px,py,k,p,q,h,sqrt(abs(h)))
+    }
+    
+    #local _ip_fn2  = function(px,py,k,p,q) {
+        _ip_fn3(px,py,k,p,z,
+            q*q - p*p*p
+        )    
+    }
+    
+    #local _ip_fn1  = function(px,py,k,ik) {
+        _ip_fn2(px,py,k,
+            ik*(py - 0.5*ik)/3.0,
+            0.25*ik*ik*px
+        )    
+    }
+    
+    function(x,y,k) {
+        _ip_fn1(abs(x),y,k,1.0/k)
+    }
+#end
+
+// End Iso_2d_parabola
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_2d_parabola(K)
+//
+#macro Iso_fixed_2d_parabola(K)
+    #local _ifp_fn  = Iso_2d_parabola()
+    function(x,y) {
+        _ifp_fn(x,y,K)
+    }    
+#end
+
+// End Iso_fixed_2d_parabola
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_2d_parabola_segment()
+//
+#macro Iso_2d_parabola_segment()
+    #local _ips_fn5 = function(px,py,he,ik,x2) {
+        Iso_length_2d(px-x2,py-(he-x2*x2/ik)) * Iso_sign(ik*(py-he)+px*px)
+    }
+    
+    #local _k3  = 1.0/3.0;
+    
+    #local _ips_fn4 = function(px,py,wi,he,ik,p,q,h,r) {
+        _ips_fn5(px,py,he,ik,
+            min(
+                select(h,
+                    pow(q+r,_k3) - pow(abs(q-r),_k3)*Iso_sign(r-q),
+                    2.0*cos(atan(r/q)/3.0)*sqrt(p)
+                ),
+                wi
+            )
+        )    
+    }
+    
+    #local _ips_fn3 = function(px,py,wi,he,ik,p,q,h) {
+        _ips_fn4(px,py,wi,he,ik,p,q,h,
+            sqrt(abs(h))
+        )    
+    }
+    
+    #local _ips_fn2 = function(px,py,wi,he,ik,p,q) {
+        _ips_fn3(px,py,wi,he,ik,p,q,
+            q*q-p*p*p
+        )    
+    }
+    
+    #local _ips_fn1 = function(px,py,wi,he,ik) {
+        _ips_fn2(px,py,wi,he,ik,
+            ik*(he-py-0.5*ik)/3.0,
+            px*ik*ik*0.25
+        )    
+    }
+    
+    function(x,y,wi,he) {
+        _ips_fn1(abs(x),y,wi,he,
+            wi*wi/he
+        )    
+    }
+#end
+
+// End Iso_2d_parabola_segment
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_2d_parabola_segment(WI,HE)
+//
+#macro Iso_fixed_2d_parabola_segment(WI,HE)
+    #local _ifps_fn = Iso_2d_parabola_segment()
+    function(x,y) {
+        _ifps_fn(x,y,WI,HE)
+    }    
+#end
+
+// End Iso_fixed_2d_parabola_segment
 //-----------------------------------------------------------------------------
 
 // End 2D Extrusion Functions
