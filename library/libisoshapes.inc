@@ -698,48 +698,30 @@
 // Iso_cone()
 //
 #macro Iso_cone()
-    #local _ic_cone_fn  = function(d,s) {
+    #local _ic_fn3  = function(d,s) {
         sqrt(d)*Iso_sign(s)
     }
-    #local _ic_d_fn = function(ax,ay,bx,by) {
-        min(Iso_dot2_2d(ax,ay), Iso_dot2_2d(bx,by))
-    }
-    #local _ic_s_fn = function(k,wx,wy,r,h) {
-        max(
-            k*(wx*-h-wy*r),
-            k*(wy+h)
+    
+    #local _ic_fn2  = function(qx,qy,wx,wy,ax,ay,bx,by,k) {
+        _ic_fn3(
+            min(Iso_dot2_2d(ax,ay), Iso_dot2_2d(bx,by)),
+            max(k*(wx*qy-wy*qx),k*(wy-qy))
         )    
     }
-    #local _ic_wqr_fn   = function(wx,wy,h,r) {
-        Iso_clamp(
-            Iso_dot_2d(wx,wy,r,h)/Iso_dot2_2d(r,h),
-            0.0,
-            1.0
+    
+    #local _ic_fn1  = function(px,py,pz,qx,qy,wx,wy) {
+        _ic_fn2(qx,qy,wx,wy,
+            wx - qx*Iso_clamp(Iso_dot_2d(wx,wy,qx,qy)/Iso_dot2_2d(qx,qy), 0.0, 1.0),
+            wy - qy*Iso_clamp(Iso_dot_2d(wx,wy,qx,qy)/Iso_dot2_2d(qx,qy), 0.0, 1.0),
+            wx - qx*Iso_clamp(wx/qx,0.0,1.0),
+            wy - qy,
+            Iso_sign(qy)
         )    
-    }
-    #local _ic_aux2_fn  = function(x,y,z,h,r,wx,wy,wqr) {
-        _ic_cone_fn(
-            _ic_d_fn(
-                wx - r*wqr,
-                wy - h*wqr,
-                wx - r*Iso_clamp(wx/r,0.0,1.0),
-                wy + h
-            ),
-            _ic_s_fn(
-                Iso_sign(-h),
-                wx,
-                wy,
-                r,
-                h
-            )
-        )    
-    }
-    #local _ic_aux1_fn  = function(x,y,z,h,r,wx,wy) {
-        _ic_aux2_fn(x,y,z,h,r,wx,wy,_ic_wqr_fn(wx,wy,h,r))
+            
     }
     
     function(x,y,z,h,r) {
-        _ic_aux1_fn(x,y,z,h,r,
+        _ic_fn1(x,y,z,r,-h,
             Iso_length_2d(x,z),
             y
         )    
