@@ -229,7 +229,7 @@
 #declare f_normalized_atan2 = function(x,y) {
     select(x,
         tau + atan2(x,y),
-        pi,
+        select(y, pi, 0),
         atan2(x,y)
     ) 
 }
