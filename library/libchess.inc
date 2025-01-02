@@ -533,15 +533,17 @@
     #macro _find(PieceList,PieceCount,Remove)
         #local _found   = Chess_set_piece_none;
         #local _i       = 0;
-        #while (_i < PieceCount & _found.piece.piece = Chess_piece_type_none)
+        #while (_i < PieceCount & (_found.piece.piece = Chess_piece_type_none))
             #local _p   = PieceList[_i];
             #if (_p.piece.piece = Piece.piece)
                 #local _found   = _p;
                 #if (Remove)
                     #while (_i+1 < PieceCount)
                         #declare PieceList[_i]  = PieceList[_i+1];
+                        #local _i   = _i + 1;
                     #end
                 #end
+                
             #else
                 #local _i   = _i + 1;    
             #end
@@ -561,6 +563,7 @@
         #end    
     #end
     
+    _piece
 #end
 
 // End Chess_set_find_piece
@@ -570,60 +573,43 @@
 //=============================================================================
 
 //=============================================================================
-// Chess_board_layout(ChessSet,ChessBoardState,JitterDef)
+// Chess_board_layout(ChessSet,ChessBoardState)
 //
 
 //-----------------------------------------------------------------------------
-// Chess_board_layout_jitter_create(JitterXFn,JitterZFn,JitterRotFn)
+// Chess_board_layout_place_piece(SetPiece,BoardLoc)
 //
-#macro Chess_board_layout_jitter_create(JitterXFn,JitterZFn,JitterRotFn)
-    #local _jitter  = dictionary {
-        .jitter_x:      JitterXFn,
-        .jitter_z:      JitterZFn,
-        .jitter_rot:    JitterRotFn
-    }
-    ;
+#macro Chess_board_layout_place_piece(SetPiece,BoardLoc)
+    #ifdef (Chess_board_layout_place_piece_custom)
+        #local _object  = object {
+            Chess_board_layout_place_piece_custom(SetPiece,BoardLoc)
+        }    
+    #else
+        #local _object  = object {
+            SetPiece.piece_obj
+            translate BoardLoc
+        }    
+    #end
     
-    _jitter
+    _object
 #end
 
-#declare Chess_board_layout_null_jitter_fn = function(x,z) {
-    0
-}
-#declare Chess_board_layout_null_jitter = Chess_board_layout_jitter_create(Chess_board_layout_null_jitter_fn,Chess_board_layout_null_jitter_fn,Chess_board_layout_null_jitter_fn);
-
-// End Chess_board_layout_jitter_create
+// End Chess_board_layout_place_piece
 //-----------------------------------------------------------------------------
 
-//-----------------------------------------------------------------------------
-// Chess_board_layout_place_piece_object(Obj,Loc,Jitter)
-//
-#macro Chess_board_layout_place_piece_object(Obj,Loc,Jitter)
-    #local _jittered_object = object {
-        Obj
-        rotate <0, Jitter.jitter_rot(Loc.x,Loc.z), 0>
-        translate <Loc.x + Jitter.jitter_x(Loc.x,Loc.z), Loc.y, Loc.z + Jitter.jitter_z(Loc.x,Loc.z)>
-    }
-    
-    _jittered_object    
-#end
-
-// End Chess_board_layout_place_piece_object
-//-----------------------------------------------------------------------------
-
-#macro Chess_board_layout(ChessSet,ChessBoardState,Jitter)
+#macro Chess_board_layout(ChessSet,ChessBoardState)
     #local _layout  = union {
         object { ChessSet.board.board_obj }
         #for (i, 0, 7, 1)
-            #for (j, 0, y, 1)
+            #for (j, 0, 7, 1)
                 #local _loc_piece   = Chess_board_state_get_index(ChessBoardState, <i,j>);
                 #if (_loc_piece.piece != Chess_piece_type_none)
                     #local _set_piece   = Chess_set_find_piece(ChessSet,_loc_piece,true);
-                    #if (_set_piece.piece = Chess_piece_type_none)
+                    #if (_set_piece.piece.piece = Chess_piece_type_none)
                         #error concat("Could not find a ", Chess_player_names[_loc_piece.player], " ", Chess_piece_type_names[_loc_piece.piece], " in the chess set\n")
                     #end
                     #local _board_loc   = Chess_set_board_loc_index(ChessSet.board,<i,j>);
-                    object { Chess_board_layout_place_piece_object(_set_piece.piece_obj,_board_loc,Jitter) }    
+                    object { Chess_board_layout_place_piece(_set_piece,_board_loc) }    
                 #end
             #end
         #end    

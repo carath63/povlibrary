@@ -104,6 +104,20 @@
 // End CS_simple_white_material
 //-----------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------
+// CS_simple_material(Player)
+//
+#macro CS_simple_material(Player)
+    #if (Player = Chess_player_white)
+        #local _m   = material { CS_simple_white_material() }
+    #else
+        #local _m   = material { CS_simple_black_material() }
+    #end
+    _m        
+#end
+
+// End CS_simple_material
+//-----------------------------------------------------------------------------
 
 // End Common
 //=============================================================================
@@ -346,7 +360,7 @@
 //=============================================================================
 // CS_simple_board()
 //
-#declare CS_simple_board_square_size    = Math_Scale(SCALE_INCH, 1+1/8);
+#declare CS_simple_board_square_size    = Math_Scale(SCALE_INCH, 1+1/4);
 #declare CS_simple_board_size           = <2*Math_Scale(SCALE_INCH, 1/2) + 8*CS_simple_board_square_size, Math_Scale(SCALE_INCH, 1/4), 2*Math_Scale(SCALE_INCH, 1/2) + 8*CS_simple_board_square_size>;
 #macro CS_simple_board()
     #local _checker_size    = <8*CS_simple_board_square_size, CS_simple_board_size.y, 8*CS_simple_board_square_size>;
@@ -394,8 +408,55 @@
     #local _cs  = Chess_set_create(_cs_board);
     
     #for (i, Chess_player_white, Chess_player_black, 1)
-        #local _king_obj    = object { CS_simple_king() }
+        #if (i = Chess_player_white)
+            #local _piece_rot   = <0, 180, 0>;
+        #else
+            #local _piece_rot   = <0, 0, 0>;
+        #end        
+        #local _king_obj    = object { CS_simple_king() material { CS_simple_material(i) } }
+        #local _king_sz     = max_extent(_king_obj) - min_extent(_king_obj);
+        #local _king_pc     = Chess_piece_create(i, Chess_piece_type_king,);
+        #local _king_set_pc = Chess_set_piece_create(_king_sz,_king_pc,_king_obj);
+        Chess_set_add_piece(_cs,_king_set_pc)
+        
+        #local _queen_obj    = object { CS_simple_queen() material { CS_simple_material(i) } }
+        #local _queen_sz     = max_extent(_queen_obj) - min_extent(_queen_obj);
+        #local _queen_pc     = Chess_piece_create(i, Chess_piece_type_queen,);
+        #local _queen_set_pc = Chess_set_piece_create(_queen_sz,_queen_pc,_queen_obj);
+        Chess_set_add_piece(_cs,_queen_set_pc)
+        Chess_set_add_piece(_cs,_queen_set_pc)  // Extra queen for pawn promotion
+        
+        #for (j, Chess_piece_side_king, Chess_piece_side_queen, 1)
+            #local _rook_obj    = object { CS_simple_rook() material { CS_simple_material(i) } }
+            #local _rook_sz     = max_extent(_rook_obj) - min_extent(_rook_obj);
+            #local _rook_pc     = Chess_piece_create(i, Chess_piece_type_rook, j);
+            #local _rook_set_pc = Chess_set_piece_create(_rook_sz,_rook_pc,_rook_obj);
+            Chess_set_add_piece(_cs,_rook_set_pc)
+            
+            #local _knight_obj    = object { CS_simple_knight() material { CS_simple_material(i) } rotate _piece_rot }
+            #local _knight_sz     = max_extent(_knight_obj) - min_extent(_knight_obj);
+            #local _knight_pc     = Chess_piece_create(i, Chess_piece_type_knight, j);
+            #local _knight_set_pc = Chess_set_piece_create(_knight_sz,_knight_pc,_knight_obj);
+            Chess_set_add_piece(_cs,_knight_set_pc)
+            Chess_set_add_piece(_cs,_knight_set_pc) // Extra knight for pawn promotion
+            
+            #local _bishop_obj    = object { CS_simple_bishop() material { CS_simple_material(i) } rotate _piece_rot }
+            #local _bishop_sz     = max_extent(_bishop_obj) - min_extent(_bishop_obj);
+            #local _bishop_pc     = Chess_piece_create(i, Chess_piece_type_bishop, j);
+            #local _bishop_set_pc = Chess_set_piece_create(_bishop_sz,_bishop_pc,_bishop_obj);
+            Chess_set_add_piece(_cs,_bishop_set_pc)
+        #end
+        
+        #for (j, 1, 8, 1)
+            #local _pawn_obj    = object { CS_simple_pawn() material { CS_simple_material(i) } }
+            #local _pawn_sz     = max_extent(_pawn_obj) - min_extent(_pawn_obj);
+            #local _pawn_pc     = Chess_pawn_create(i, j);
+            #local _pawn_set_pc = Chess_set_piece_create(_pawn_sz,_pawn_pc,_pawn_obj);
+            Chess_set_add_piece(_cs,_pawn_set_pc)
+        #end
     #end
+    
+    _cs
 #end
 
 // End CS_simple_chess_set_create
