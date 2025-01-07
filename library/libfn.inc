@@ -33,6 +33,61 @@
 // General Useful Functions
 //
 
+#declare f_length_2d  = function(x,y) {
+    sqrt(x*x+y*y)
+}
+
+#declare f_length_3d = function(x,y,z) {
+    sqrt(x*x+y*y+z*z)
+}
+
+#declare f_dot_2d = function(x1,y1,x2,y2) {
+    x1*x2+y1*y2
+}
+
+#declare f_ndot_2d    = function(x1,y1,x2,y2) {
+    x1*x2 - y1*y2
+}    
+
+#declare f_dot_3d = function(x1,y1,z1,x2,y2,z2) {
+    x1*x2+y1*y2+z1*z2
+}
+
+#declare f_dot2_2d    = function(x,y) {
+    f_dot_2d(x,y,x,y)
+}                      
+
+#declare f_dot2_3d    = function(x,y,z) {
+    f_dot_3d(x,y,z,x,y,z)
+}
+
+#declare f_sign   = function(v) {
+    select(v, -1, 1)
+}
+
+#declare f_clamp  = function(v,mn,mx) {
+    max(mn,min(mx,v))
+}
+
+#declare f_mat2x2_mult_x  = function(v11,v12,v21,v22,x,y) {
+    v11*x+v21*y
+}
+
+#declare f_mat2x2_mult_y  = function(v11,v12,v21,v22,x,y) {
+    v12*x+v22*y
+}
+
+#declare f_round  = function(v) {
+    select(v,
+        int(v - 0.5),
+        int(v + 0.5)
+    )    
+}        
+
+#declare f_frac = function(value) {
+    value - int(value)
+}    
+
 //-----------------------------------------------------------------------------
 // f_unit_index(vl,unit)
 //

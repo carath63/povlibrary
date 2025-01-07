@@ -14,7 +14,9 @@
 
 #ifdef(View_POV_Include_Stack)
     #debug "including libnoise.inc\n"
-#end                     
+#end
+
+#include "libfn.inc"                    
 
 //=============================================================================
 // Noise_size_create(Size)
@@ -26,6 +28,48 @@
 #end
 
 // End Noise_size_create
+//=============================================================================
+
+//=============================================================================
+// Noise Generator Functions
+//
+
+//-----------------------------------------------------------------------------
+// White Noise Functions
+//
+
+#macro White_noise_2d(SeedV,SeedN)
+    #local _seedv_x = SeedV.x;
+    #local _seedv_y = SeedV.y;
+    
+    function(x,y) {
+        f_frac(
+            sin(
+                f_dot_2d(sin(x),sin(y),_seedv_x,_seedv_y)
+            ) * SeedN
+        )    
+    }
+#end
+
+#macro White_noise_3d(SeedV,SeedN)
+    #local _seedv_x = SeedV.x;
+    #local _seedv_y = SeedV.y;
+    #local _seedv_z = SeedV.z;
+    
+    function(x,y,z) {
+        f_frac(
+            sin(
+                f_dot_3d(sin(x),sin(y),sin(z),_seedv_x,_seedv_y,_seedv_z)
+            ) * SeedN
+        )    
+    }
+#end
+
+// End White Noise Functions
+//-----------------------------------------------------------------------------
+
+
+// End Noise Generator Functions
 //=============================================================================
 
 //=============================================================================
