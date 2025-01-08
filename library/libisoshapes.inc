@@ -1957,392 +1957,513 @@
 //
 
 //-----------------------------------------------------------------------------
-// Iso_grid_inexact_2d(CellSDF2D,CellSize)
+// Iso_grid_inexact_2d(CellSDF2D)
+// Iso_grid_fixedcell_inexact_2d(CellSDF2D,CellSize)
+// Iso_grid_texture_inexact_2d(CellTexture2D)
+// Iso_grid_fixedcell_texture_inexact_2d(CellTexture2D,CellSize)
 //
-// Generates an SDF(x,y,z) for an infinite grid of cells of CellSize(x,y) in the
-// XZ plane whose contents are defined by the given CellSDF2D
+// Generates an SDF(x,y,z,cx,cz) for an infinite grid of cells of CellSize(x,y) in the
+// XZ plane whose contents are defined by the given CellSDF2D.  <cx,cz> is the size
+// of the cell in the grid
 //
 // This version is inexact as it does not account for points within a cell
 // that may lie closer to the SDF in a neighboring cell due to variations
 // in location and size of the SDF.
 //
-#macro Iso_grid_inexact_2d(CellSDF2D,CellSize)
-    #local _cx      = CellSize.x;
-    #local _cz      = CellSize.y;
-    
-    #local _dup_sdf1    = function(x,y,z,idx,idz) {
+#macro Iso_grid_inexact_2d(CellSDF2D)
+    #local _dup_fn1    = function(x,y,z,cx,cz,idx,idz) {
         CellSDF2D(
-            x - _cx*idx,
+            x - cx*idx,
             y,
-            z - _cz*idz,
+            z - cz*idz,
+            cx,
+            cz,
             idx,
             idz
         )    
     }
-    function(x,y,z) {
-        _dup_sdf1(x,y,z,
-            Iso_round(x/_cx),
-            Iso_round(z/_cz)
+    function(x,y,z,cx,cz) {
+        _dup_fn1(x,y,z,cx,cz,
+            Iso_round(x/cx),
+            Iso_round(z/cz)
         )    
     }
     
+#end
+
+#macro Iso_grid_fixedcell_inexact_2d(CellSDF2D,CellSize)
+    #local _igfi_fn = Iso_grid_inexact_2d(CellSDF2D)
+    
+    #local _cx  = CellSize.x;
+    #local _cz  = CellSize.y;
+    function(x,y,z) {
+        _igfi_fn(x,y,z,_cx,_cz)
+    }    
+#end
+
+#macro Iso_grid_texture_inexact_2d(CellTexture2D)
+    #local _dup_fn1    = function(x,y,z,cx,cz,idx,idz) {
+        CellTexture2D(
+            x - cx*idx,
+            y,
+            z - cz*idz,
+            cx,
+            cz,
+            idx,
+            idz
+        )    
+    }
+    function(x,y,z,cx,cz) {
+        _dup_fn1(x,y,z,cx,cz,
+            Iso_round(x/cx),
+            Iso_round(z/cz)
+        )    
+    }
+    
+#end
+
+#macro Iso_grid_fixedcell_texture_inexact_2d(CellTexture2D,CellSize)
+    #local _igfti_fn    = Iso_grid_texture_inexact_2d(CellTexture2D)
+    
+    #local _cx  = CellSize.x;
+    #local _cz  = CellSize.y;
+    function(x,y,z) {
+        _igfti_fn(x,y,z,_cx,_cz)
+    }    
 #end
 
 // End Iso_grid_inexact_2d
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Iso_grid_texture_inexact_2d(CellTexture2D,CellSize)
+// Iso_limited_grid_inexact_2d(CellSDF2D)
+// Iso_limited_grid_fixedcell_inexact_2d(CellSDF2D,CellSize)
+// Iso_fixedlimited_grid_inexact_2d(CellSDF2D,GridSize)     
+// Iso_fixedlimited_grid_fixedcell_inexact_2d(CellSDF2D,GridSize,CellSize)
+// Iso_limited_grid_texture_inexact_2d(CellTexture2D)
+// Iso_limited_grid_fixecell_texture_inexact_2d(CellTexture2D,CellSize)
+// Iso_fixedlimited_grid_texture_inexact_2d(CellTexture2D,GridSize)
+// Iso_fixedlimited_grid_fixedcell_texture_inexact_2d(CellTexture2D,GridSize,CellSize)
 //
-// Generates an texture function(x,y,z) for an infinite grid of cells of CellSize(x,y) in the
-// XZ plane whose contents are defined by the given CellTexture2D
-//
-// This version is inexact as it does not account for points within a cell
-// that may lie closer to the SDF in a neighboring cell due to variations
-// in location and size of the SDF.
-//
-#macro Iso_grid_texture_inexact_2d(CellTexture2D,CellSize)
-    #local _cx      = CellSize.x;
-    #local _cz      = CellSize.y;
+#macro Iso_limited_grid_inexact_2d(CellSDF2D)
+    #local _dup_fn1    = function(x,y,z,cx,cz,idx,idz) {
+        CellSDF2D(
+            x - cx*idx,
+            y,
+            z - cz*idz,
+            cx,
+            cz,
+            idx,
+            idz
+        )    
+    }
+    function(x,y,z,cx,cz,gx,gz) {
+        _dup_fn1(x,y,z,cx,cz,
+            Iso_clamp(Iso_round(x/cx),-int((gx-1)/2),gx-(int((gx-1)/2)+1)),
+            Iso_clamp(Iso_round(z/cz),-int((gz-1)/2),gz-(int((gz-1)/2)+1))
+        )    
+    }
+#end
+
+#macro Iso_limited_grid_fixedcell_inexact_2d(CellSDF2D,CellSize)
+    #local _ilgi_fn = Iso_limited_grid_inexact_2d(CellSDF2D)
     
-    #local _dup_sdf1    = function(x,y,z,idx,idz) {
+    #local _cx  = CellSize.x;
+    #local _cz  = CellSize.y;
+    function(x,y,z,gx,gz) {
+        _ilgi_fn(x,y,z,_cx,_cz,gx,gz)
+    }    
+#end
+
+#macro Iso_fixedlimited_grid_inexact_2d(CellSDF2D,GridSize)
+    #local _ilgi_fn = Iso_limited_Grid_inexact_2d(CellSDF2D)
+    
+    #local _gx  = GridSize.x;
+    #local _gz  = GridSize.z;
+    function(x,y,z,cx,cz) {
+        _ilgi_fn(x,y,z,cx,cz,_gx,_gz)
+    }    
+#end 
+
+#macro Iso_fixedlimited_grid_fixedcell_inexact_2d(CellSDF2D,GridSize,CellSize)
+    #local _ilgi_fn = Iso_limited_grid_inexact_2d(CellSDF2D)
+    
+    #local _gx  = GridSize.x;
+    #local _gz  = GridSize.y;
+    #local _cx  = CellSize.x;
+    #local _cz  = CellSize.y;
+    function(x,y,z) {
+        _ilgi_fn(x,y,z,_cx,_cz,_gx,_gz)
+    }    
+#end
+
+#macro Iso_limited_grid_texture_inexact_2d(CellTexture2D)
+    #local _dup_fn1    = function(x,y,z,cx,cz,idx,idz) {
         CellTexture2D(
-            x - _cx*idx,
+            x - cx*idx,
             y,
-            z - _cz*idz,
+            z - cz*idz,
+            cx,
+            cz,
             idx,
             idz
         )    
     }
-    function(x,y,z) {
-        _dup_sdf1(x,y,z,
-            Iso_round(x/_cx),
-            Iso_round(z/_cz)
+    function(x,y,z,cx,cz,gx,gz) {
+        _dup_fn1(x,y,z,cx,cz,
+            Iso_clamp(Iso_round(x/cx),-int((gx-1)/2),gx-(int((gx-1)/2)+1)),
+            Iso_clamp(Iso_round(z/cz),-int((gz-1)/2),gz-(int((gz-1)/2)+1))
         )    
     }
     
 #end
 
-// End Iso_grid_texture_inexact_2d
-//-----------------------------------------------------------------------------
+#macro Iso_limited_grid_fixedcell_texture_inexact_2d(CellTexture2D,CellSize)
+    #local _ilgti_fn    = Iso_limited_grid_texture_inexact_2d(CellTexture2D)
 
-//-----------------------------------------------------------------------------
-// Iso_fixed_grid_inexact_2d(CellSDF2D,CellSize,GridSize)
-//
-// Generates an SDF(x,y,z) for a grid of size GridSize(x,y) cells of CellSize(x,y) in the
-// XZ plane whose contents are defined by the given CellSDF2D
-//
-// This version is inexact as it does not account for points within a cell
-// that may lie closer to the SDF in a neighboring cell due to variations
-// in location and size of the SDF.
-//
-#macro Iso_fixed_grid_inexact_2d(CellSDF2D,CellSize,GridSize)
     #local _cx      = CellSize.x;
     #local _cz      = CellSize.y;
-    #local _gxmin   = -int((GridSize.x-1)*0.5);
-    #local _gxmax   = int((GridSize.x-1)*0.5);
-    #local _gzmin   = -int((GridSize.y-1)*0.5);
-    #local _gzmax   = int((GridSize.y-1)*0.5);
+    function(x,y,z,gx,gz) {
+        _ilgti_fn(x,y,z,_cx,_cz,gx,gz)
+    }        
+#end
+
+#macro Iso_fixedlimited_grid_texture_inexact_2d(CellTexture2D,GridSize)
+    #local _ilgti_fn    = Iso_limited_grid_texture_inexact_2d(CellTexture2D)
+    #local _gx      = GridSize.x;
+    #local _gz      = GridSize.y;
     
-    #local _dup_sdf1    = function(x,y,z,idx,idz) {
-        CellSDF2D(
-            x - _cx*idx,
-            y,
-            z - _cz*idz,
-            idx,
-            idz
-        )    
-    }
-    function(x,y,z) {
-        _dup_sdf1(x,y,z,
-            Iso_clamp(Iso_round(x/_cx),_gxmin,_gxmax),
-            Iso_clamp(Iso_round(z/_cz),_gzmin,_gzmax)
-        )    
+    function(x,y,z,cx,cz) {
+        _ilgti_fn(x,y,z,cx,cz,_gx,_gz)
     }
     
 #end
 
-// End Iso_fixed_grid_inexact_2d
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-// Iso_fixed_grid_texture_inexact_2d(CellTexture2D,CellSize,GridSize)
-//
-// Generates an Texture function(x,y,z) for a grid of size GridSize(x,y) cells of CellSize(x,y) in the
-// XZ plane whose contents are defined by the given CellTexture2D
-//
-// This version is inexact as it does not account for points within a cell
-// that may lie closer to the SDF in a neighboring cell due to variations
-// in location and size of the SDF.
-//
-#macro Iso_fixed_grid_texture_inexact_2d(CellTexture2D,CellSize,GridSize)
-    #local _cx      = CellSize.x;
-    #local _cz      = CellSize.y;
-    #local _gxmin   = -int((GridSize.x-1)*0.5);
-    #local _gxmax   = int((GridSize.x-1)*0.5);
-    #local _gzmin   = -int((GridSize.y-1)*0.5);
-    #local _gzmax   = int((GridSize.y-1)*0.5);
-    
-    #local _dup_sdf1    = function(x,y,z,idx,idz) {
-        CellSDF2D(
-            x - _cx*idx,
-            y,
-            z - _cz*idz,
-            idx,
-            idz
-        )    
-    }
+#macro Iso_fixedlimited_grid_fixedcell_texture_inexact_2d(CellTexture2D,GridSize,CellSize)
+    #local _ilgti_fn    = Iso_limited_grid_texture_inexact_2d(CellTexture2D)
+    #local _gx          = GridSize.x;
+    #local _gz          = GridSize.y;
+    #local _cx          = CellSize.x;
+    #local _cz          = CellSize.y;
     function(x,y,z) {
-        _dup_sdf1(x,y,z,
-            Iso_clamp(Iso_round(x/_cx),_gxmin,_gxmax),
-            Iso_clamp(Iso_round(z/_cz),_gzmin,_gzmax)
-        )    
-    }
-    
+        _ilgti_fn(x,y,z,_cx,_cz,_gx,_gz)
+    }    
 #end
 
-// End Iso_fixed_grid_texture_inexact_2d
+// End Iso_limited_grid_inexact_2d
 //-----------------------------------------------------------------------------
-
+ 
 //-----------------------------------------------------------------------------
-// Iso_grid_exact_2d(CellSDF2D,CellSize)
+// Iso_grid_exact_2d(CellSDF2D)
+// Iso_grid_fixedcell_exact_2d(CellSDF2D,CellSize)
+// Iso_grid_texture_exact_2d(CellTexture2D,CellSDF2D)
+// Iso_grid_fixedcell_texture_exact_2d(CellTexture2D,CellSDF2D,CellSize)
 //
 // This version compares a point against the cell it lies in as well as
 // neighboring cells on the same side of the cell to find the closets SDF
 //
-#macro Iso_grid_exact_2d(CellSDF2D,CellSize)
-    #local _cx      = CellSize.x;
-    #local _cz      = CellSize.y;
-    #local _dup_sdf3    = function(x,y,z,idx,idz) {
+#macro Iso_grid_exact_2d(CellSDF2D)
+    #local _dup_fn3    = function(x,y,z,cx,cz,idx,idz) {
         CellSDF2D(
-            x - _cx*idx,
+            x - cx*idx,
             y,
-            z - _cz*idz,
+            z - cz*idz,
+            cx,
+            cz,
             idx,
             idz
         )    
     }
     
-    #local _dup_sdf2    = function(x,y,z,idx,idz,ox,oz) {
+    #local _dup_fn2    = function(x,y,z,cx,cz,idx,idz,ox,oz) {
         min(
             #for (i,0,1,1)
                 #for (j, 0, 1, 1)
-                    _dup_sdf3(x,y,z,idx+i*ox,idz+j*oz),
+                    _dup_fn3(x,y,z,cx,cz,idx+i*ox,idz+j*oz),
                 #end
             #end
             1e6        
         )
     }
     
-    #local _dup_sdf1    = function(x,y,z,idx,idz) {
-        _dup_sdf2(x,y,z,idx,idz,Iso_sign(x-_cx*idx),Iso_sign(z-_cz*idz))
+    #local _dup_fn1    = function(x,y,z,cx,cz,idx,idz) {
+        _dup_fn2(x,y,z,idx,idz,Iso_sign(x-cx*idx),Iso_sign(z-cz*idz))
         
     }
-    function(x,y,z) {
-        _dup_sdf1(x,y,z,
-            Iso_round(x/_cx),
-            Iso_round(z/_cz)
+    function(x,y,z,cx,cz) {
+        _dup_fn1(x,y,z,cx,cz,
+            Iso_round(x/cx),
+            Iso_round(z/cz)
         )    
     }
     
+#end
+
+#macro Iso_grid_fixedcell_exact_2d(CellSDF2D,CellSize)
+    #local _ige_fn  = Iso_grid_exact_2d(CellSDF2D)
+    
+    #local _cx  = CellSize.x;
+    #local _cz  = CellSize.y;
+    function(x,y,z) {
+        _ige_fn(x,y,z,_cx,_cz)
+    }    
+#end
+
+#macro Iso_grid_texture_exact_2d(CellTexture2D,CellSDF2D)
+    #local _dup_fn3    = function(x,y,z,cx,cz,idx,idz) {
+        CellSDF2D(
+            x - cx*idx,
+            y,
+            z - cz*idz,
+            cx,
+            cz,
+            idx,
+            idz
+        )    
+    }
+    
+    #local _dup_selector    = function(x,y,z,cx,cz,ox00,oz00,d00,ox01,oz01,d01,ox10,oz10,d10,ox11,oz11,d11,nu) {
+        select(d00 - d01,
+            select(d00 - d10,
+                select(d00 - d11,
+                    CellTexture2D(x - cx*ox00,y,z-cz*oz00,cx,cz,ox00,oz00),
+                    CellTexture2D(x - cx*ox11,y,z-cz*oz11,cx,cz,ox11,oz11)
+                ),
+                select(d10 - d11,
+                    CellTexture2D(x - cx*ox10,y,z-cz*oz10,cx,cz,ox10,oz10),
+                    CellTexture2D(x - cx*ox11,y,z-cz*oz11,cx,cz,ox11,oz11)
+                )    
+            ),
+            select(d01 - d10,
+                select(d01 - d11,
+                    CellTexture2D(x - cx*ox01,y,z-cz*oz01,cx,cz,ox01,oz01),
+                    CellTexture2D(x - cx*ox11,y,z-cz*oz11,cx,cz,ox11,oz11)
+                ),
+                select(d10 - d11,
+                    CellTexture2D(x - cx*ox10,y,z-cz*oz10,cx,cz,ox10,oz10),
+                    CellTexture2D(x - cx*ox11,y,z-cz*oz11,cx,cz,ox11,oz11)
+                )
+            )
+        )                        
+    }
+    
+    #local _dup_fn2    = function(x,y,z,cx,cz,idx,idz,ox,oz) {
+        _dup_selector(x,y,z,cx,cz,
+        #for (i,0,1,1)
+            #for (j, 0, 1, 1)
+                idx+i*ox, idz+j*oz,_dup_fn3(x,y,z,idx+i*ox,idz+j*oz),
+            #end
+        #end
+        0
+        )
+    }
+    
+    #local _dup_fn1    = function(x,y,z,cx,cz,idx,idz) {
+        _dup_fn2(x,y,z,idx,idz,Iso_sign(x-cx*idx),Iso_sign(z-cz*idz))
+        
+    }
+    
+    function(x,y,z,cx,cz) {
+        _dup_fn1(x,y,z,
+            Iso_round(x/cx),
+            Iso_round(z/cz)
+        )    
+    }
+    
+#end
+
+#macro Iso_grid_texture_fixedcell_exact_2d(CellTexture2D,CellSDF2D,CellSize)
+    #local _igte_fn = Iso_grid_texture_exact_2d(CellTexture2D,CellSDF2D)
+    
+    #local _cx  = CellSize.x;
+    #local _cz  = CellSize.y;
+    function(x,y,z) {
+        _igte_fn(x,y,z,_cx,_cz)
+    }    
 #end
 
 // End Iso_grid_exact_2d
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Iso_grid_texture_exact_2d(CellTexture2D,CellSDF2D,CellSize)
+// Iso_limited_grid_exact_2d(CellSDF2D)
+// Iso_limited_grid_fixedcell_exact_2d(CellSDF2D,CellSize)
+// Iso_fixedlimited_grid_exact_2d(CellSDF2D,GridSize)
+// Iso_fixedlimited_grid_fixedcell_exact_2d(CellSDF2D,GridSize,CellSize)
+// Iso_limited_grid_texture_exact_2d(CellTexture2D,CellSDF2D)
+// Iso_limited_grid_texture_fixedcell_exact_2d(CellTexture2D,CellSDF2D,CellSize)
+// Iso_fixedlimited_grid_texture_exact_2d(CellTexture2D,CellSDF2D,GridSize)
+// Iso_fixedlimited_grid_texture_fixedcell_exact_2d(CellTexture2D,CellSDF2D,GridSize,CellSize)
 //
-#macro Iso_grid_texture_exact_2d(CellTexture2D,CellSDF2D,CellSize)
-    #local _cx      = CellSize.x;
-    #local _cz      = CellSize.y;
-    
-    #local _dup_sdf3    = function(x,y,z,idx,idz) {
+#macro Iso_limited_grid_exact_2d(CellSDF2D)
+    #local _dup_fn3    = function(x,y,z,cx,cz,idx,idz) {
         CellSDF2D(
-            x - _cx*idx,
+            x - cx*idx,
             y,
-            z - _cz*idz,
+            z - cz*idz,
+            cx,
+            cz,
             idx,
             idz
         )    
     }
     
-    #local _dup_selector    = function(x,y,z,ox00,oz00,d00,ox01,oz01,d01,ox10,oz10,d10,ox11,oz11,d11,nu) {
-        select(d00 - d01,
-            select(d00 - d10,
-                select(d00 - d11,
-                    CellTexture2D(x - _cx*ox00,y,z-_cz*oz00,ox00,oz00),
-                    CellTexture2D(x - _cx*ox11,y,z-_cz*oz11,ox11,oz11)
-                ),
-                select(d10 - d11,
-                    CellTexture2D(x - _cx*ox10,y,z-_cz*oz10,ox10,oz10),
-                    CellTexture2D(x - _cx*ox11,y,z-_cz*oz11,ox11,oz11)
-                )    
-            ),
-            select(d01 - d10,
-                select(d01 - d11,
-                    CellTexture2D(x - _cx*ox01,y,z-_cz*oz01,ox01,oz01),
-                    CellTexture2D(x - _cx*ox11,y,z-_cz*oz11,ox11,oz11)
-                ),
-                select(d10 - d11,
-                    CellTexture2D(x - _cx*ox10,y,z-_cz*oz10,ox10,oz10),
-                    CellTexture2D(x - _cx*ox11,y,z-_cz*oz11,ox11,oz11)
-                )
-            )
-        )                        
-    }
-    
-    #local _dup_sdf2    = function(x,y,z,idx,idz,ox,oz) {
-        _dup_selector(x,y,z,
-        #for (i,0,1,1)
-            #for (j, 0, 1, 1)
-                idx+i*ox, idz+j*oz,_dup_sdf3(x,y,z,idx+i*ox,idz+j*oz),
-            #end
-        #end
-        0
-        )
-    }
-    
-    #local _dup_sdf1    = function(x,y,z,idx,idz) {
-        _dup_sdf2(x,y,z,idx,idz,Iso_sign(x-_cx*idx),Iso_sign(z-_cz*idz))
-        
-    }
-    
-    function(x,y,z) {
-        _dup_sdf1(x,y,z,
-            Iso_round(x/_cx),
-            Iso_round(z/_cz)
-        )    
-    }
-    
-#end
-
-// End Iso_grid_texture_exact_2d
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-// Iso_fixed_grid_2d(CellSDF2D,CellSize,GridSize)
-//
-#macro Iso_fixed_grid_exact_2d(CellSDF2D,CellSize,GridSize)
-    #local _cx      = CellSize.x;
-    #local _cz      = CellSize.y;
-    #local _gxmin   = -int((GridSize.x-1)*0.5);
-    #local _gxmax   = int((GridSize.x-1)*0.5);
-    #local _gzmin   = -int((GridSize.y-1)*0.5);
-    #local _gzmax   = int((GridSize.y-1)*0.5);
-    
-    #local _dup_sdf3    = function(x,y,z,idx,idz) {
-        CellSDF2D(
-            x - _cx*idx,
-            y,
-            z - _cz*idz,
-            idx,
-            idz
-        )    
-    }
-    
-    #local _dup_sdf2    = function(x,y,z,idx,idz,ox,oz) {
+    #local _dup_fn2    = function(x,y,z,cx,cz,gx,gz,idx,idz,ox,oz) {
         min(
             #for (i,0,1,1)
                 #for (j, 0, 1, 1)
-                    _dup_sdf3(x,y,z,Iso_clamp(idx+i*ox,_gxmin,_gxmax),Iso_clamp(idz+j*oz,_gzmin,_gzmax)),
+                    _dup_fn3(x,y,z,cx,cz,
+                        Iso_clamp(idx+i*ox,-int((gx-1)/2),gx-(int((gx-1)/2)+1)),
+                        Iso_clamp(idz+j*oz,-int((gz-1)/2),gz-(int((gz-1)/2)+1))
+                    ),
                 #end
             #end
             1e6        
         )
     }
     
-    #local _dup_sdf1    = function(x,y,z,idx,idz) {
-        _dup_sdf2(x,y,z,idx,idz,Iso_sign(x-_cx*idx),Iso_sign(z-_cz*idz))
+    #local _dup_fn1    = function(x,y,z,cx,cz,gx,gz,idx,idz) {
+        _dup_fn2(x,y,z,cx,cz,gx,gz,idx,idz,Iso_sign(x-cx*idx),Iso_sign(z-cz*idz))
         
     }
-    function(x,y,z) {
-        _dup_sdf1(x,y,z,
-            Iso_round(x/_cx),
-            Iso_round(z/_cz)
+    function(x,y,z,cx,cz,gx,gz) {
+        _dup_fn1(x,y,z,cx,cz,gx,gz,
+            Iso_round(x/cx),
+            Iso_round(z/cz)
         )    
     }
     
 #end
 
-// End Iso_fixed_grid_exact_2d
-//-----------------------------------------------------------------------------
+#macro Iso_limited_grid_fixedcell_exact_2d(CellSDF2D,CellSize)
+    #local _ilge_fn = Iso_limited_grid_exact_2d(CellSDF2D)
+    
+    #local _cx  = CellSize.x;
+    #local _cz  = CellSize.y;
+    function(x,y,z,gx,gz) {
+        _ilge_fn(x,y,z,_cx,_cz,gx,gz)
+    }    
+#end
 
-//-----------------------------------------------------------------------------
-// Iso_fixed_grid_texture_exact_2d(CellTexture2D,CellSDF2D,CellSize,GridSize)
-//
-#macro Iso_fixed_grid_texture_exact_2d(CellTexture2D,CellSDF2D,CellSize,GridSize)
-    #local _cx      = CellSize.x;
-    #local _cz      = CellSize.y;
-    #local _gxh     = int((GridSize.x-1)*0.5);
-    #local _gzh     = int((GridSize.y-1)*0.5);
+#macro Iso_fixedlimited_grid_exact_2d(CellSDF2D,GridSize)
+    #local _ilge_fn = Iso_limited_grid_exact_2d(CellSDF2D)
     
-    #local _gxmin   = -_gxh;
-    #local _gxmax   = GridSize.x - _gxh;
-    #local _gzmin   = -_gzh;
-    #local _gzmax   = GridSize.y - _gzh;
+    #local _gx  = GridSize.x;
+    #local _gz  = GridSize.y;
+    function(x,y,z,cx,cz) {
+        _ilge_fn(x,y,z,cx,cz,_gx,_gz)
+    }    
+#end
+
+#macro Iso_fixedlimited_grid_fixedcell_exact_2d(CellSDF2D,GridSize,CellSize)
+    #local _ilge_fn = Iso_limited_grid_exact_2d(CellSDF2D)
     
-    #local _dup_sdf3    = function(x,y,z,idx,idz) {
+    #local _gx  = GridSize.x;
+    #local _gz  = GridSize.y;
+    #local _cx  = CellSize.x;
+    #local _cz  = CellSize.y;
+    
+    function(x,y,z) {
+        _ilge_fn(x,y,z,_cx,_cz,_gx,_gz)
+    }    
+#end
+
+#macro Iso_limited_grid_texture_exact_2d(CellTexture2D,CellSDF2D)
+    #local _dup_fn3    = function(x,y,z,cx,cz,idx,idz) {
         CellSDF2D(
-            x - _cx*idx,
+            x - cx*idx,
             y,
-            z - _cz*idz,
+            z - cz*idz,
+            cx,
+            cz,
             idx,
             idz
         )    
     }
     
-    #local _dup_selector    = function(x,y,z,ox00,oz00,d00,ox01,oz01,d01,ox10,oz10,d10,ox11,oz11,d11,nu) {
+    #local _dup_selector    = function(x,y,z,cx,cz,ox00,oz00,d00,ox01,oz01,d01,ox10,oz10,d10,ox11,oz11,d11,nu) {
         select(d00 - d01,
             select(d00 - d10,
                 select(d00 - d11,
-                    CellTexture2D(x - _cx*ox00,y,z-_cz*oz00,ox00,oz00),
-                    CellTexture2D(x - _cx*ox11,y,z-_cz*oz11,ox11,oz11)
+                    CellTexture2D(x - cx*ox00,y,z-cz*oz00,cx,cz,ox00,oz00),
+                    CellTexture2D(x - cx*ox11,y,z-cz*oz11,cx,cz,ox11,oz11)
                 ),
                 select(d10 - d11,
-                    CellTexture2D(x - _cx*ox10,y,z-_cz*oz10,ox10,oz10),
-                    CellTexture2D(x - _cx*ox11,y,z-_cz*oz11,ox11,oz11)
+                    CellTexture2D(x - cx*ox10,y,z-cz*oz10,cx,cz,ox10,oz10),
+                    CellTexture2D(x - cx*ox11,y,z-cz*oz11,cx,cz,ox11,oz11)
                 )    
             ),
             select(d01 - d10,
                 select(d01 - d11,
-                    CellTexture2D(x - _cx*ox01,y,z-_cz*oz01,ox01,oz01),
-                    CellTexture2D(x - _cx*ox11,y,z-_cz*oz11,ox11,oz11)
+                    CellTexture2D(x - cx*ox01,y,z-cz*oz01,cx,cz,ox01,oz01),
+                    CellTexture2D(x - cx*ox11,y,z-cz*oz11,cx,cz,ox11,oz11)
                 ),
                 select(d10 - d11,
-                    CellTexture2D(x - _cx*ox10,y,z-_cz*oz10,ox10,oz10),
-                    CellTexture2D(x - _cx*ox11,y,z-_cz*oz11,ox11,oz11)
+                    CellTexture2D(x - cx*ox10,y,z-cz*oz10,cx,cz,ox10,oz10),
+                    CellTexture2D(x - cx*ox11,y,z-cz*oz11,cx,cz,ox11,oz11)
                 )
             )
         )                        
     }
     
-    #local _dup_sdf2    = function(x,y,z,idx,idz,ox,oz) {
-        _dup_selector(x,y,z,
+    #local _dup_fn2    = function(x,y,z,cx,cz,gx,gz,idx,idz,ox,oz) {
+        _dup_selector(x,y,z,cx,cz,
         #for (i,0,1,1)
             #for (j, 0, 1, 1)
-                Iso_clamp(idx+i*ox,_gxmin,_gxmax), Iso_clamp(idz+j*oz,_gzmin,_gzmax),_dup_sdf3(x,y,z,Iso_clamp(idx+i*ox,_gxmin,_gxmax),Iso_clamp(idz+j*oz,_gzmin,_gzmax)),
+                Iso_clamp(idx+i*ox,-int((gx-1)/2),gx-(int((gx-1)/2)+1)), Iso_clamp(idz+j*oz,-int((gz-1)/2),gz-(int((gz-1)/2)+1)),_dup_fn3(x,y,z,cx,cz,Iso_clamp(idx+i*ox,-int((gx-1)/2),gx-(int((gx-1)/2)+1)),Iso_clamp(idz+j*oz,-int((gz-1)/2),gz-(int((gz-1)/2)+1))),
             #end
         #end
         0
         )
     }
     
-    #local _dup_sdf1    = function(x,y,z,idx,idz) {
-        _dup_sdf2(x,y,z,idx,idz,Iso_sign(x-_cx*idx),Iso_sign(z-_cz*idz))
+    #local _dup_fn1    = function(x,y,z,cx,cz,gx,gz,idx,idz) {
+        _dup_fn2(x,y,z,cx,cz,gx,gz,idx,idz,Iso_sign(x-cx*idx),Iso_sign(z-cz*idz))
         
     }
     
-    function(x,y,z) {
-        _dup_sdf1(x,y,z,
-            Iso_round(x/_cx),
-            Iso_round(z/_cz)
+    function(x,y,z,cx,cz,gx,gz) {
+        _dup_fn1(x,y,z,cx,cz,gx,gz,
+            Iso_round(x/cx),
+            Iso_round(z/cz)
         )    
     }
     
 #end
 
-// End Iso_fixed_grid_texture_exact_2d
+#macro Iso_limited_grid_texture_fixedcell_exact_2d(CellTexture2D,CellSDF2D,CellSize)
+    #local _ilgte_fn    = Iso_limited_grid_texture_exact_2d(CellTexture2D,CellSDF2D)
+    
+    #local _cx  = CellSize.x;
+    #local _cz  = CellSize.y;
+    function(x,y,z,gx,gz) {
+        _ilgte_fn(x,y,z,_cx,_cz,gx,gz)
+    }    
+#end
+
+#macro Iso_fixedlimited_grid_texture_exact_2d(CellTexture2D,CellSDF2D,GridSize)
+    #local _ilgte_fn    = Iso_limited_grid_texture_exact_2d(CellTexture2D,CellSDF2D)
+    
+    #local _gx  = GridSize.x;
+    #local _gz  = GridSize.y;
+    function(x,y,z,gx,gz) {
+        _ilgte_fn(x,y,z,cx,cz,_gx,_gz)
+    }    
+#end
+
+#macro Iso_fixedlimited_grid_texture_fixedcell_exact_2d(CellTexture2D,CellSDF2D,GridSize,CellSize)
+    #local _ilgte_fn    = Iso_limited_grid_texture_exact_2d(CellTexture2D,CellSDF2D)
+    
+    #local _gx  = GridSize.x;
+    #local _gz  = GridSize.y;
+    #local _cx  = CellSize.x;
+    #local _cz  = CellSize.y;
+    function(x,y,z) {
+        _ilgte_fn(x,y,z,_cx,_cz,_gx,_gz)
+    }    
+#end
+
+// End Iso_limited_grid_2d
 //-----------------------------------------------------------------------------
 
 // 
