@@ -863,7 +863,7 @@
     #local _ifcc_cone_fn    = Iso_capped_cone()
     
     function(x,y,z) {
-        _ifcc_cone_fn(x,y,z,Height,Radius1,Radius2)
+        _ifcc_cone_fn(x,-y,z,Height/2,Radius1,Radius2)
     }
 #end
 
@@ -1679,8 +1679,8 @@
 //    return primitive(q)
 //}
 #macro Iso_rotation(Primitive2DFn)
-    function(x,y,z,o) {
-        Primitive2DFn(Iso_length_2d(x,z)-o,y)
+    function(x,y,z,offs) {
+        Primitive2DFn(Iso_length_2d(x,z)-offs,y)
     }    
 #end
 
