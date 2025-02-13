@@ -1,7 +1,10 @@
 /******************************************************************************
  * File: libchess.inc
  * Description:
- *      Libchess ".inc" file
+ *      This is a library of macros for defining and modifying the state of
+ *      a chess board, as well as defining what a "chess set" includes that can
+ *      be used to create a combined object consisting of the chess board
+ *      and the pieces on that board in their current positions.
  ******************************************************************************/
 
 #ifndef(Libchess_Inc_Temp)
@@ -51,6 +54,8 @@
 //=============================================================================
 // Chess Piece Declarations
 //
+// Constants used for easier access to elements of chess sets and board states
+//
 #declare Chess_player_white = 0;
 #declare Chess_player_black = 1;
 #declare Chess_player_names = array[2] {
@@ -79,15 +84,37 @@
     "p"
 }
 
+#declare Chess_piece_side_king  = 0;
+#declare Chess_piece_side_queen = 1;
+
 // End Chess Piece Declarations
 //=============================================================================
 
 //=============================================================================
 // Chess Set Definitions
 //
+// These macros are used to create a particular Chess Set.  
+// Look at chess_sets/cs_simple.inc to see examples of calling these macros
+// to define a new chess set.
+//
+// A Chess Set consists of a board (Chess_set_board*), and a set of white and
+// black pieces, (Chess_set_player*)
+//
+// Utility macros have been provided for finding coordinates for board positions
+// using various notations as well.
+//
 
 //-----------------------------------------------------------------------------
 // Chess_set_board_create(BoardSize,SquareSize,BoardObj)
+//
+// Creates a board representation as a dictionary consisting of:
+//      BoardSize: <x,y,z>
+//          X - width of the board with white player in the -Z direction
+//          Y - thickness of the board
+//          Z - depth of the board with white player in the -Z direction
+//      SquareSize: size of the sides of the board square
+//      BoardObj: object{} for the board in the chess set.  It should be
+//                resting on the Y=0 plane, and centered at <0,0> in the XZ plane
 //
 #macro Chess_set_board_create(BoardSize,SquareSize,BoardObj)
     #local _board   = dictionary {
@@ -106,6 +133,14 @@
 //-----------------------------------------------------------------------------
 // Chess_set_board_loc(ChessSetBoard,Pos)
 //
+//      Returns a 3D vector <x,y,z> representing the center, resting position
+//      for the given board and a position using column letter and row number
+//      in standard chess notation.
+//
+//      ChessSetBoard: result of Chess_set_board_create() call
+//      Pos: string in the format "a8" where "a" is the leftmost column (a-h) from the white player's view, and "8"
+//      is the row number (1-8) from the white player's view.
+// 
 #macro Chess_set_board_loc(ChessSetBoard,Pos)
     #local _index   = Chess_board_pos_to_index(Pos);
     #local _loc     = <(-3.5 + _index.x)*ChessSetBoard.square_size, ChessSetBoard.board_size.y, (-3.5 + _index.y)*ChessSetBoard.square_size>;
@@ -119,6 +154,12 @@
 //-----------------------------------------------------------------------------
 // Chess_set_board_loc_index(ChessSetBoard,Index)
 //
+//      Returns a 3D vector <x,y,z> representing the center, resting position
+//      for the given board and a position using a 2D vector as column and row numbers
+//
+//      ChessSetBoard: result of Chess_set_board_create() call
+//      Index: 2D vector <x,y> where x is the column number (0-7) and y is the row number (0-7)
+// 
 #macro Chess_set_board_loc_index(ChessSetBoard,Index)
     #local _loc     = <(-3.5 + Index.x)*ChessSetBoard.square_size, ChessSetBoard.board_size.y, (-3.5 + Index.y)*ChessSetBoard.square_size>;
     
@@ -129,8 +170,17 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Chess_set_piece_create(PieceSize,Piece,PieceObj)
+// Chess_set_piece_create(Player,PieceType,PieceSize,PieceObj)
 //
+//      Creates a piece representation as a dictionary consisting of:
+//
+//      Player: One of the Chess_player_* constants (white or black)
+//      PieceType: One of the Chess_piece_type_* constants
+//      PieceSize: 3D vector <x,y,z> with the size of the piece in its
+//          original facing
+//      PieceObj: object{} for the piece, which should be resting on the Y=0 plane
+//          and centered at <0,0> in the XZ plane
+//      
 #macro Chess_set_piece_create(Player,PieceType,PieceSize,PieceObj)
     #local _piece   = dictionary {
         .player:        Player,
@@ -143,6 +193,8 @@
     _piece    
 #end
 
+// This is a constant Chess_set_piece representing an empty space on the board
+//
 #declare Chess_set_piece_none   = dictionary {
     .piece_type:    Chess_piece_type_none
 }
@@ -153,6 +205,14 @@
 
 //-----------------------------------------------------------------------------
 // Chess_set_player_create()
+//
+//  Creates a dictionary object representing the pieces for one player in a
+//  Chess_set that initially has no pieces in it.  In this representation,
+//      there is one king allowed, and all other pieces can have multiple copies
+//      which allows for chess sets where there is variability between different
+//      copies of the same piece.
+//
+//  Player: One of the Chess_player_* constants (white or black)
 //
 #macro Chess_set_player_create(Player)
     #local _player_pieces   = dictionary {
@@ -179,6 +239,12 @@
 //-----------------------------------------------------------------------------
 // Chess_set_create(Board)
 //
+//      Creates a chess set as a dictionary consisting of a Chess_set_board*
+//  dictionary and an array of Chess_set_player* dictionaries, one for the white
+//  and one for the black player.  Initially both player sets are empty.
+//
+//  Board: Result of a Chess_set_board_create() call
+//
 #macro Chess_set_create(Board)
     #local _pieces  = array[2];
     #local _pieces[Chess_player_white]  = Chess_set_player_create(Chess_player_white);
@@ -198,6 +264,16 @@
 
 //-----------------------------------------------------------------------------
 // Chess_set_player_add_piece(PlayerPieces,ChessSetPiece)
+//
+//      Adds a new piece to the given chess set player representation, automatically
+//      appending it to the correct array for pieces other than the king.
+//
+//  PlayerPieces:   Given a chess set S (Chess_set_create()), this is either
+//      S.pieces[Chess_player_white] or S.pieces[Chess_player_black]
+//
+//
+// The easier use of this is the Chess_set_add_piece() macro below that finds the
+// correct player pieces and calls this function with that.
 //
 #macro Chess_set_player_add_piece(PlayerPieces,ChessSetPiece)
     #switch(ChessSetPiece.piece_type)
@@ -236,6 +312,11 @@
 //-----------------------------------------------------------------------------
 // Chess_set_add_piece(ChessSet,ChessSetPiece)
 //
+//      Adds a piece to the appropriate player pieces in the given chess set.
+//
+//      ChessSet: Result of Chess_set_create()
+//      ChessSetPiece: Result of Chess_set_piece_create()
+//
 #macro Chess_set_add_piece(ChessSet,ChessSetPiece)
     Chess_set_player_add_piece(ChessSet.pieces[ChessSetPiece.player],ChessSetPiece)
 #end
@@ -245,6 +326,12 @@
 
 //-----------------------------------------------------------------------------
 // Chess_set_player_complete(ChessSetPlayer)
+//
+//      Checks to ensure that a given player piece set in the chess set has
+//      at least 1 of each piece.
+//
+//      This is a helper macro for Chess_set_complete() below and doesn't need to be
+//      called directly.
 //
 #macro Chess_set_player_complete(ChessSetPlayer)
     #if (ChessSetPlayer.king.piece_type = Chess_piece_type_none)
@@ -273,6 +360,10 @@
 //-----------------------------------------------------------------------------
 // Chess_set_complete(ChessSet)
 //
+//      Checks to ensure that a given chess set has at least one of each piece
+//      for each player.
+//
+//      ChessSet: Result of Chess_set_create()
 #macro Chess_set_complete(ChessSet)
     Chess_set_player_complete(ChessSet.pieces[Chess_player_white])
     Chess_set_player_complete(ChessSet.pieces[Chess_player_black])        
@@ -287,9 +378,24 @@
 //=============================================================================
 // Chess Game Representations
 //
+// Orthogonal to the chess set is the representation of the state of the board.
+// These macros create a state representation and manipulate it with macros
+// for moving pieces on the board, adding them to the board directly, or
+// removing them from the board.
+//
 
 //-----------------------------------------------------------------------------
 // Chess_board_graveyard_create(Player)
+//
+//  Each player has a graveyard of pieces that are removed from the board.
+//  The graveyard starts empty, and various operations can cause pieces to
+//  be placed in the graveyard.
+//
+//  This macro creates a dictionary representation of the graveyard consisting
+//  of the player (Chess_player_* constant), and an array of Chess_set_piece
+//  objects and a count of those pieces.
+//
+//  Player: One of either Chess_player_white or Chess_player_black
 //
 #macro Chess_board_graveyard_create(Player)
     #local _graveyard   = dictionary {
@@ -308,6 +414,11 @@
 //-----------------------------------------------------------------------------
 // Chess_board_graveyard_add(Graveyard,Piece)
 //
+//  Adds a chess set piece to a graveyard.
+//
+//  Graveyard: Result of Chess_board_graveyard_create()
+//  Piece: Chess set piece (Chess_set_piece_create()) from the chess set
+//
 #macro Chess_board_graveyard_add(Graveyard,Piece)
     #declare Graveyard.pieces[Graveyard.num_pieces] = Piece;
     #declare Graveyard.num_pieces                   = Graveyard.num_pieces + 1;
@@ -318,6 +429,13 @@
 
 //-----------------------------------------------------------------------------
 // Chess_board_state_create()
+//
+//  Creates a dictionary representation of a chess board state that consists of
+//  a particular chess set, and a matrix of board position states holding
+//  chess set pieces, and the two graveyard objects.  Initially, the matrix
+//  of board states is set to Chess_set_piece_none, and the graveyards are empty.
+//
+//  ChessSet: Result of calling Chess_set_create()
 //
 #macro Chess_board_state_create(ChessSet)
     #local _board_state     = array[8][8];
@@ -390,6 +508,12 @@
 //-----------------------------------------------------------------------------
 // Chess_board_state_set(BoardState,Pos,Piece)
 //
+//  Sets the board state at a given position to the given chess set piece.
+//
+//  BoardState: Result of Chess_board_state_create()
+//  Pos: string representation of a board position in column letter, row number format "a8"
+//  Piece: Result of Chess_set_piece_create()
+//
 #macro Chess_board_state_set(BoardState,Pos,Piece)
     #local _index   = Chess_board_pos_to_index(Pos); 
     #declare BoardState.board_state[_index.y][_index.x] = Piece;
@@ -400,6 +524,11 @@
 
 //-----------------------------------------------------------------------------
 // Chess_board_state_get(BoardState,Pos)
+//
+//  Gets the chess set piece at the given board position.
+//
+//  BoardState: Result of Chess_board_state_create()
+//  Pos: string representation of a board position in column letter, row number format "a8"
 //
 #macro Chess_board_state_get(BoardState,Pos)
     #local _index   = Chess_board_pos_to_index(Pos);
@@ -414,6 +543,11 @@
 //-----------------------------------------------------------------------------
 // Chess_board_state_get_index(BoardState,Index)
 //
+//  Gets the chess set piece at the given <col,row> index
+//
+//  BoardState: Result of Chess_board_state_create()
+//  Index: <col,row> 0-based index of the column and row
+//
 #macro Chess_board_state_get_index(BoardState,Index)
     #local _piece   = BoardState.board_state[Index.y][Index.x];
     
@@ -425,6 +559,14 @@
 
 //-----------------------------------------------------------------------------
 // Chess_board_state_move(BoardState,PosFrom,PosTo)
+//
+//      Moves the piece on the board at position PosFrom to PosTo and
+//      performs any other maintenance caused by that, (such as removing
+//      the piece at PosTo if there is one.)
+//
+//  BoardState: Result of Chess_board_state_create()
+//  PosFrom: Position of the piece to be moved in "a8" format
+//  PosTo: Position to move the piece to in "a8" format
 //
 #macro Chess_board_state_move(BoardState,PosFrom,PosTo)
     #local _idx2    = Chess_board_pos_to_index(PosTo);
@@ -451,6 +593,17 @@
 //-----------------------------------------------------------------------------
 // Chess_board_state_pawn_promote(BoardState,PosFrom,PosTo,Piece)
 //
+//      Performs a pawn promition for the pawn at PosFrom to the position PosTo
+//      replacing it with the given piece.  This macro uses Chess_board_state_move()
+//      to move the pawn, so capturing a piece at PosTo is automatic.
+//
+//      The promoted pawn is added to the player's graveyard
+//
+//  BoardState: Result of Chess_board_state_create() 
+//  PosFrom: Position of the piece to be moved in "a8" format
+//  PosTo: Position to move the piece to in "a8" format
+//  Piece: Result of Chess_set_piece_create() representing the piece the pawn is promoted to
+//
 #macro Chess_board_state_pawn_promote(BoardState,PosFrom,PosTo,Piece)
     #local _piece   = Chess_board_state_get(BoardState,PosFrom);
     #if (_piece.piece_type != Chess_piece_type_pawn)
@@ -467,6 +620,13 @@
 //-----------------------------------------------------------------------------
 // Chess_board_state_castle(BoardState,Player,Side)
 //
+//      Performs the castling move for the given player on the given side,
+//      updating the locations of all of the affected pieces.
+//
+//  BoardState: Result of Chess_board_state_create()
+//  Player: Chess_player_white or Chess_player_black
+//  Side: Chess_piece_side_king or Chess_piece_side_queen
+// 
 #macro Chess_board_state_castle(BoardState,Player,Side)
     #if (Player = Chess_player_white)
         #local _king_from   = "e1";
@@ -512,6 +672,10 @@
 //-----------------------------------------------------------------------------
 // Chess_board_state_init(BoardState)
 //
+//      Sets the board state to the standard board set up for a game of chess.
+//
+//  BoardState: Result of Chess_board_state_create()
+//
 #macro Chess_board_state_init(BoardState)
     Chess_set_complete(BoardState.chess_set)
     
@@ -550,6 +714,11 @@
 //-----------------------------------------------------------------------------
 // Chess_board_state_dump(BoardState,Graveyards)
 //
+//      Writes the current board state to the debug stream
+//
+//  BoardState: Result of Chess_board_state_create()
+//  Graveyards: if true, dump the graveyard information, else skip it
+//
 #macro Chess_board_state_dump(BoardState,Graveyards)
     #if (Graveyards & BoardState.graveyards[Chess_player_black].num_pieces > 0)
         #for(i, 0, BoardState.graveyards[Chess_player_black].num_pieces-1, 1)
@@ -560,8 +729,8 @@
         #debug "|"
         #for (j, 0, 7, 1)
             #local _piece   = BoardState.board_state[i][j];
-            #if (_piece.piece = Chess_piece_type_none)
-                #debug concat(" ", Chess_piece_type_names[_piece.piece],"|")
+            #if (_piece.piece_type = Chess_piece_type_none)
+                #debug concat(" ", Chess_piece_type_names[_piece.piece_type],"|")
             #else                                                       
                 #debug concat(Chess_player_abbrevs[_piece.player], Chess_piece_type_names[_piece.piece_type],"|")
             #end
@@ -582,11 +751,24 @@
 //=============================================================================
 
 //=============================================================================
-// Chess_board_layout(ChessSet,ChessBoardState)
+// Chess_board_layout(ChessBoardState)
+//
+//  This macro creates the combination of the chess board and the pieces on it
+//  based on the current state.
+//
+//  ChessBoardState: Result of Chess_board_state_create()
 //
 
 //-----------------------------------------------------------------------------
 // Chess_board_layout_place_piece(ChessBoardState,ChessSetPiece,BoardIndex)
+//
+//      This is a utility macro to place a piece on the board, allowing for
+//      customization of the piece location.  It is called for each board location
+//      by Chess_board_layout()
+//
+//  ChessBoardState: Result of Chess_board_state_create() 
+//  ChessSetPiece: Result of Chess_set_piece_create()
+//  BoardIndex: <col,row> where col and row are 0-based indices
 //
 #macro Chess_board_layout_place_piece(ChessBoardState,ChessSetPiece,BoardIndex)
     #ifdef (Chess_board_layout_place_piece_custom)
@@ -628,9 +810,21 @@
 //=============================================================================
 // Standard Chess Board Jitter Macros
 //
+//  These macros provide a common customization for placing pieces on the
+//  board that generate and track the jitter offset for a piece at each board
+//  location.  This is important for animations where subsequent clocks may
+//  result in changes to randomization between runs that could occur if the
+//  jitter was assigned when the layout was created.
 
 //-----------------------------------------------------------------------------
 // Chess_board_jitter_create(XZJitter,YRot)
+//
+//      Creates a dictionary representation of a location jitter consisting
+//      of a rotation around the Y axis for the piece, and an offset in the
+//      XZ plane from the center of the board square.
+//
+//  XZJitter:   <x,z> distance from the center of the square
+//  YRot: rotation (0-360) around the Y axis for the piece
 //
 #macro Chess_board_jitter_create(XZJitter,YRot)
     #local _jitter  = dictionary {
@@ -642,6 +836,8 @@
     _jitter    
 #end
 
+// The jitter map is initialized with no jitter for all locations
+//
 #declare Chess_board_jitter_null    = Chess_board_jitter_create(<0,0>,0);
 
 // End Chess_board_jitter_create
@@ -649,6 +845,9 @@
 
 //-----------------------------------------------------------------------------
 // Chess_board_jitter_state_create()
+//
+//      Creates a matrix[8][8] representation of the jitter state of the whole
+//      board for storing the individual location jitter values.
 //
 #macro Chess_board_jitter_state_create()
     #local _jitter_state    = array[8][8];
@@ -668,6 +867,12 @@
 //-----------------------------------------------------------------------------
 // Chess_board_jitter_state_set_index(JitterState,Index,Jitter)
 //
+//      Sets the jitter at a given <col,row> index
+//
+//  JitterState:    result of calling Chess_board_jitter_state_create()
+//  Index:  <col,row> to set
+//  Jitter: result of calling Chess_board_jitter_create()
+//
 #macro Chess_board_jitter_state_set_index(JitterState,Index,Jitter)
     #local JitterState[Index.y][Index.x]  = Jitter;
 #end
@@ -678,6 +883,13 @@
 //-----------------------------------------------------------------------------
 // Chess_board_jitter_state_set(JitterState,Pos,Jitter)
 // 
+//      This is equivalent to Chess_board_jitter_state_set_index() but uses
+//      the "a8" format to represent the position.
+//
+//  JitterState:    result of calling Chess_board_jitter_state_create()
+//  Pos:  position in "a8" format to set
+//  Jitter: result of calling Chess_board_jitter_create()
+//
 #macro Chess_board_jitter_state_set(JitterState,Pos,Jitter)
     #local _index   = Chess_board_pos_to_index(Pos);
     #local JitterState[_index.y][_index.x]    = Jitter; 
@@ -688,6 +900,20 @@
 
 //-----------------------------------------------------------------------------
 // Chess_board_layout_place_piece_jitter(ChessBoardState,ChessSetPiece,BoardIndex)
+//
+//      This macro can be used in an implementation of Chess_board_layout_place_piece_custom()
+//      for use with Chess_board_layout() to use the jitter system defined here.
+//
+//    Usage:
+//    #local _board_state   = Chess_board_state_create(...);
+//    #local _board_state.jitter_state    = Chess_board_jitter_state_create();
+//    (perform board state operations... and jitter setting operations)
+//
+//    #macro Chess_board_layout_place_piece_custom(ChessBoardState,ChessSetPiece,BoardIndex)
+//        #local _object  = object { Chess_board_layout_place_piece_jitter(ChessBoardState,ChessSetPiece,BoardIndex) }
+//        _object
+//    #end
+//    #local _board = Chess_board_layout(_board_state)
 //
 #macro Chess_board_layout_place_piece_jitter(ChessBoardState,ChessSetPiece,BoardIndex)
     #local _board_loc   = Chess_set_board_loc_index(ChessBoardState.chess_set.board,BoardIndex);

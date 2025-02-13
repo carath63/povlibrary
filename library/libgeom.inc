@@ -10,7 +10,7 @@
 #version 3.8;
 
 #ifdef(View_POV_Include_Stack)
-    #debug "including lib_template.inc\n"
+    #debug "including libgeom.inc\n"
 #end                     
 
 //=============================================================================
