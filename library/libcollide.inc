@@ -68,7 +68,8 @@
 //      .center:        (min_ext + max_ext)/2
 //      .sz:            (max_ext - min_ext)
 //      .rsteps:        Number of scan points in each plane
-//      .vsteps:        Number of vertical planes
+//      .vsteps:        Number of vertical planes 
+//      .maxrad:        Maximum radius across the mesh for the object
 //      .radii:         matrix[vsteps][rsteps] containing the distance from the center.XZ to the edge in the given plane
 
 //-----------------------------------------------------------------------------
@@ -160,12 +161,14 @@
 // Col_slide_map_to_object(FromObjectMap,FromPt,ToObject,Gap,Tolerance)
 //
 //      Compute the point along the XZ vector between FromPt and the center of ToObject
-//  where the given FromObjectMap can be slid such that it abuts ToObject but does
-//  not overlap it within the tolerances of the given map.
+//  where the given FromObjectMap can be slid such that it abuts ToObject (with a minimum Gap) but does
+//  not overlap it within the Tolerance using the given map.
 //
 //  FromObjectMap: result of a Col_object_map_create() call
 //  FromPt:        <x,z> coordinates of the starting point of the slide towards ToObject
 //  ToObject:   object{} to abut with the object in FromObjectMap
+//  Gap:        minimum distance between newly placed object and the ToObject
+//  Tolerance:  Minimum delta between iterations moving the point before declaring success
 //
 
 #macro Col_slide_map_to_object(FromObjectMap,FromPt,ToObject,Gap,Tolerance)
@@ -232,7 +235,7 @@
                         #local _dist    = vlength(_hit - _from);
                         #local _overlap = (FromObjectMap.radii[i][j] + Gap) - _dist;
                         //#debug concat("_overlap=", str(_overlap, 0, 6), "\n")
-                        #if (_overlap > 0.01)
+                        #if (_overlap > Tolerance)
                             //#debug concat("_overlap=", str(_overlap, 0, 6), "\n")
                             //#debug concat("Bumped into the object from dir <", vstr(3, _dir, ",", 0, 3), "> with overlap ", str(_overlap, 0, 3), " at <", vstr(3, _hit, ",", 0, 3), ">\n")
                             #local _new_pt  = _hit - _dir*(Gap + FromObjectMap.radii[i][j]);
@@ -248,9 +251,9 @@
             // Move the best point away from the center of the
             // cluster object by the max radius
             #local _push_dir    = vnormalize(_best_pt - <_to_center.x, 0, _to_center.z>);
-            #debug concat("Pushing object from <", vstr(3, _best_pt, ",", 0, 0), "> ")
+            #ifdef (Col_slide_verbose) #debug concat("Pushing object from <", vstr(3, _best_pt, ",", 0, 3), "> ") #end
             #local _best_pt     = _best_pt - _push_dir*FromObjectMap.maxrad;          
-            #debug concat("to <", vstr(3, _best_pt, ",", 0, 0), ">\n")
+            #ifdef (Col_slide_verbose) #debug concat("to <", vstr(3, _best_pt, ",", 0, 0), ">\n") #end
         #end
     #end        
     
@@ -263,6 +266,12 @@
 
 //-----------------------------------------------------------------------------
 // Col_slide_object_to_object(FromObject,FromPt,ToObject,RRes,HRes,Gap,Tolerance)
+//
+//      This is a utility macro that first computes the object map for the given FromObject
+//  using the given radial and horizontal resolution values, and then slides the object
+//  to the given ToObject
+//
+//  If Col_slide_verbose is defined, the object map is dumped before returning
 //
 #macro Col_slide_object_to_object(FromObject,FromPt,ToObject,RRes,HRes,Gap,Tolerance)
     #local _map = Col_object_map_create(FromObject,RRes,HRes);
