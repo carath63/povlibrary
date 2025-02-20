@@ -112,9 +112,13 @@
     #local _vsteps  = ceil(_size.y/VerticalResolution);
     #local _maxrad  = 0;
     
+    #local _min_y   = _min_ext.y + 1e-6;
+    #local _max_y   = _max_ext.y - 1e-6;
+    
     #local _matrix  = array[_vsteps][_rsteps];
     #for (i, 0, _vsteps-1, 1)
-        #local _to_point    = <_center.x, _min_ext.y + i*VerticalResolution, _center.z>;
+        #local _to_y        = f_clamp(_min_y + i*VerticalResolution, _min_y, _max_y);
+        #local _to_point    = <_center.x, _to_y, _center.z>;
         #for (j, 0, _rsteps-1, 1)
             #local _from_point  = _to_point + vrotate(<0, 0, _max_r>, <0, j*RadialResolution, 0>);
             #local _from_dir    = vnormalize(_to_point - _from_point);
@@ -123,7 +127,15 @@
             #if (vlength(_nrm) = 0)
                 #local _hit = _to_point;
             #end
-            #local _rad = vlength(_hit - _to_point);
+            #local _hit_dist    = vlength(_from_point - _hit);
+            #local _from_dist   = vlength(_from_point - _to_point);
+            #if (_hit_dist > _from_dist)
+                //#debug concat("_to_point=<", vstr(3, _to_point, ",", 0, 6), ">; _from_point=<", vstr(3, _from_point, ",", 0, 6), ">; _hit=<", vstr(3, _hit, ",", 0, 6), ">\n")
+                //#debug concat("j=", str(j, 0, 0) "; _hit_dist=", str(_hit_dist, 0, 6), "; _from_dist=", str(_from_dist, 0, 6), "\n")
+                #local _rad = -vlength(_hit - _to_point);
+            #else
+                #local _rad = vlength(_hit - _to_point);
+            #end        
             #local _matrix[i][j]    = _rad;
             #if (_rad > _maxrad)
                 #local _maxrad  = _rad;
@@ -176,15 +188,20 @@
     #local _to_max_ext  = max_extent(ToObject);
     #local _to_sz       = _to_max_ext - _to_min_ext;
     #local _to_center   = (_to_min_ext + _to_max_ext)/2;
-    //#debug concat("_to_center=<", vstr(3, _to_center, ",", 0, 3), ">\n")
+    
+    #ifdef (Col_slide_verbose) #debug concat("_to_center=<", vstr(3, _to_center, ",", 0, 3), ">\n") #end
     
     #local _xz_dir          = vnormalize(<_to_center.x,0,_to_center.z> - <FromPt.x,0,FromPt.y>);
-    //#debug concat("_xz_dir=<", vstr(3,_xz_dir,",",0,3), ">\n")
+    
+    #ifdef (Col_slide_verbose) #debug concat("_xz_dir=<", vstr(3,_xz_dir,",",0,3), ">\n") #end
     #local _from_obj_angle  = mod(360+degrees(atan2(_xz_dir.x,_xz_dir.z)),360);
     #local _from_obj_rstep  = mod(f_round(_from_obj_angle/FromObjectMap.rres),FromObjectMap.rsteps);
     
+    #local _min_y       = FromObjectMap.min_ext.y + 1e-6;
+    #local _max_y       = FromObjectMap.max_ext.y - 1e-6;
+    
     #for (i, 0, FromObjectMap.vsteps-1, 1)
-        #local _y       = FromObjectMap.min_ext.y + i*FromObjectMap.vres;
+        #local _y       = f_clamp(_min_y + i*FromObjectMap.vres, _min_y, _max_y);
         #local _from    = <FromPt.x,_y,FromPt.y>;
         #local _to      = <_to_center.x,_y,_to_center.z>;
         //#debug concat("trace dir=<", vstr(3, (_to - _from), ",", 0, 3), ">\n")
@@ -194,7 +211,7 @@
             #local _obj_pt      = _to;
             #local _obj_dist    = vlength(_from - _to);
         #else
-            //#debug concat("_hit=<", vstr(3, _hit, ",", 0, 3), ">\n")
+            #ifdef (Col_slide_verbose) #debug concat("_from=<", vstr(3, _from, ",", 0, 3), "; _hit=<", vstr(3, _hit, ",", 0, 3), ">\n") #end
             #local _or          = (Gap + FromObjectMap.radii[i][_from_obj_rstep]);
             //#debug concat("_or=", str(_or, 0, 3), "\n")
             #local _obj_pt      = _hit - _xz_dir*_or;
@@ -253,7 +270,7 @@
             #local _push_dir    = vnormalize(_best_pt - <_to_center.x, 0, _to_center.z>);
             #ifdef (Col_slide_verbose) #debug concat("Pushing object from <", vstr(3, _best_pt, ",", 0, 3), "> ") #end
             #local _best_pt     = _best_pt - _push_dir*FromObjectMap.maxrad;          
-            #ifdef (Col_slide_verbose) #debug concat("to <", vstr(3, _best_pt, ",", 0, 0), ">\n") #end
+            #ifdef (Col_slide_verbose) #debug concat("to <", vstr(3, _best_pt, ",", 0, 3), ">\n") #end
         #end
     #end        
     
