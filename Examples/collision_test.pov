@@ -20,6 +20,7 @@
 //
 #include "camera35mm.inc"
 #include "Lightsys.inc"
+#include "rand.inc"
 
 // End Standard Includes
 //-----------------------------------------------------------------------------
@@ -113,11 +114,11 @@ global_settings {
 #end
 
 #macro Tree_random(RStream)
-    #local _trunk_height    = Tree_min_trunk_height + (Tree_max_trunk_height - Tree_min_trunk_height)*rand(RStream);
-    #local _trunk_radius    = Tree_min_trunk_radius + (Tree_max_trunk_radius - Tree_min_trunk_radius)*rand(RStream);
-    #local _cone_ratio      = Tree_min_cone_rratio + (Tree_max_cone_rratio - Tree_min_cone_rratio)*rand(RStream);
+    #local _trunk_height    = RRand(Tree_min_trunk_height,Tree_max_trunk_height,RStream);
+    #local _trunk_radius    = RRand(Tree_min_trunk_radius,Tree_max_trunk_radius,RStream);
+    #local _cone_ratio      = RRand(Tree_min_cone_rratio,Tree_max_cone_rratio,RStream);
     #local _cone_radius     = _trunk_radius * _cone_ratio;
-    #local _cone_height     = Tree_min_cone_height + (Tree_max_cone_height - Tree_min_cone_height)*rand(RStream);
+    #local _cone_height     = RRand(Tree_min_cone_height,Tree_max_cone_height,RStream);
     
     #local _tree    = object { Tree(_trunk_radius,_trunk_height,_cone_radius,_cone_height) }
     
@@ -128,36 +129,123 @@ global_settings {
 //=============================================================================
 
 //=============================================================================
+// Rock(Radius,Scale)
+// Rock_random(RStream)
+//
+#declare Rock_min_radius    = 0.25;
+#declare Rock_max_radius    = 1;
+#declare Rock_min_scale     = 0.25;
+#declare Rock_max_scale     = 1.0;
+
+#macro Rock(Radius,Scale)
+    #local _rock    = difference {
+        sphere { <0, 0, 0>, Radius scale Scale }
+        plane { y, 0 }
+        pigment { color rgb 0.25 }
+    }
+    
+    _rock    
+#end
+
+#macro Rock_random(RStream)
+    #local _radius  = RRand(Rock_min_radius,Rock_max_radius,RStream);
+    #local _scale   = <RRand(Rock_min_scale,Rock_max_scale,RStream),RRand(Rock_min_scale,Rock_max_scale,RStream),RRand(Rock_min_scale,Rock_max_scale,RStream)>;
+    
+    #local _rock    = Rock(_radius,_scale)
+    
+    _rock
+#end
+
+// End Rock
+//=============================================================================
+
+//=============================================================================
+// Bush(Radius,Height,Rotation)
+// Bush_random(RStream)
+// 
+#declare Bush_min_radius    = 0.25;
+#declare Bush_max_radius    = 1;
+#declare Bush_min_height    = 0.5;
+#declare Bush_max_height    = 1;
+
+#macro Bush(Radius,Height,Rotation)
+    #local _bush    = difference {
+        cylinder {
+            <0, 0, 0>,
+            <0, Height, 0>,
+            Radius
+        }
+        cylinder {
+            <0, -1, 0>,
+            <0, Height+1, 0>,
+            1.1*Radius
+            translate <0, 0, Radius>
+        }    
+        
+        pigment { color rgb <0, 0.25, 0> }
+        rotate <0, Rotation, 0>    
+    }
+    
+    _bush
+#end
+
+#macro Bush_random(RStream)
+    #local _radius  = RRand(Bush_min_radius,Bush_max_radius,RStream);
+    #local _height  = RRand(Bush_min_height,Bush_max_height,RStream);
+    #local _rot     = 360*rand(RStream);
+    
+    #local _bush    = object { Bush(_radius,_height,_rot) }
+    
+    _bush
+#end 
+
+// End Bush
+//=============================================================================
+
+//=============================================================================
 // Scene object declarations
 //
 
 //-----------------------------------------------------------------------------
-// Scene_trees(optional NumTrees)
+// Scene_cluster(optional NumObjects)
 //
-#macro Scene_trees(optional NumTrees)
+#macro Scene_cluster(optional NumObjects)
     #local _first_tree  = object { Tree(Tree_max_trunk_radius,Tree_max_trunk_height,Tree_max_trunk_radius*Tree_max_cone_rratio,Tree_max_cone_height) }
     #local _grove       = object { _first_tree }
     
-    #ifdef (NumTrees)
-        #local _grove_trees     = NumTrees;
+    #ifdef (NumObjects)
+        #local _grove_objects     = NumObjects;
     #else    
-        #local _grove_trees     = 10;
+        #local _grove_objects     = 10;
     #end    
     #local _grove_gap       = 0;
     
-    #local _tree_rres       = 45;
-    #local _tree_vres       = 0.01;
+    #local _obj_rres        = 1;
+    #local _obj_vres        = 0.05;
     #local _tolerance       = 0.01;
     
-    #for (i, 1, _grove_trees-1)
+    #macro _pick_object()
+        #local _rnd = rand(Scene_seed);
+        #if (_rnd < 0.5)
+            #local _obj = object { Tree_random(Scene_seed) }
+        #elseif (_rnd < 0.85)
+            #local _obj = object { Bush_random(Scene_seed) }
+        #else
+            #local _obj = object { Rock_random(Scene_seed) }
+        #end
+        
+        _obj            
+    #end
+    
+    #for (i, 1, _grove_objects-1)
         #local _grove_ctr   = (max_extent(_grove) + min_extent(_grove))/2;
-        #local _new_tree    = object { Tree_random(Scene_seed) }
+        #local _new_obj    = object { _pick_object() }
         #local _from3d      = _grove_ctr + vrotate(z*100, <0, 360*rand(Scene_seed), 0>);
         #local _from        = <_from3d.x,_from3d.z>;
-        #local _trans       = Col_slide_object_to_object(_new_tree,_from,_grove,_tree_rres,_tree_vres,_grove_gap,_tolerance);
+        #local _trans       = Col_slide_object_to_object(_new_obj,_from,_grove,_obj_rres,_obj_vres,_grove_gap,_tolerance);
         #local _grove       = union {
             object { _grove }
-            object { _new_tree translate _trans }
+            object { _new_obj translate _trans }
         }    
     #end
     
@@ -167,7 +255,7 @@ global_settings {
     _grove
 #end
 
-// End Scene_trees
+// End Scene_cluster
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
@@ -193,10 +281,10 @@ global_settings {
 // Redefine this to create the scene.  It will be instantiated below
 #macro Scene_object_create()
     #local _scene   = union {
-        #ifdef (Scene_trees_obj)
-            object { Scene_trees_obj }
+        #ifdef (Scene_cluster_obj)
+            object { Scene_cluster_obj }
         #else    
-            object { Scene_trees() }
+            object { Scene_cluster() }
         #end    
         object { Scene_camera_light() }
         plane { y, 0 pigment { color rgb 0.5 } }
@@ -218,13 +306,13 @@ global_settings {
 
 #switch(val(str(Scene_View,0,2)))
     #case(1.1)
-        #declare Scene_trees_obj    = object { Scene_trees() }
+        #declare Scene_cluster_obj    = object { Scene_cluster() }
         #declare camera_location    = <Scene_grove_ctr.x, 20, Scene_grove_ctr.z - 0.1>;
         #declare camera_lookat      = <Scene_grove_ctr.x, 0, Scene_grove_ctr.z>;
     #break
     
     #case(1.2)
-        #declare Scene_trees_obj    = object { Scene_trees(25) }
+        #declare Scene_cluster_obj    = object { Scene_cluster(25) }
         #declare camera_location    = <Scene_grove_ctr.x, Tree_max_trunk_height, Scene_grove_ctr.z - 2*Scene_grove_sz.z>;
         #declare camera_lookat      = <Scene_grove_ctr.x, Tree_max_trunk_height, Scene_grove_ctr.z>;
     #break
