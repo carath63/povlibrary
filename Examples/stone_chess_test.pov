@@ -29,7 +29,7 @@
 // My Includes
 // 
 #include "libchess.inc"
-#include "chess_sets/cs_simple.inc"
+#include "chess_sets/cs_stone.inc"
 
 // End My Includes
 //-----------------------------------------------------------------------------
@@ -109,7 +109,7 @@ global_settings {
 #macro Scene_chess_board()
     // Create the simple chess set defined in chess_sets/cs_simple.inc and create
     // an initial board state from that chess set
-    #local _chess_set   = CS_simple_chess_set_create();
+    #local _chess_set   = CS_stone_chess_set_create();
     #local _board_state = Chess_board_state_create(_chess_set);
     
     // For this sample we are using jitter to place the pieces slightly off-center
