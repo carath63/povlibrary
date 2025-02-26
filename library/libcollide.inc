@@ -170,7 +170,7 @@
 //
 
 //-----------------------------------------------------------------------------
-// Col_slide_map_to_object(FromObjectMap,FromPt,ToObject,Gap,Tolerance)
+// Col_slide_map_to_object(FromObjectMap,FromPt,ToObject,optional ToPt,Gap,Tolerance)
 //
 //      Compute the point along the XZ vector between FromPt and the center of ToObject
 //  where the given FromObjectMap can be slid such that it abuts ToObject (with a minimum Gap) but does
@@ -183,15 +183,21 @@
 //  Tolerance:  Minimum delta between iterations moving the point before declaring success
 //
 
-#macro Col_slide_map_to_object(FromObjectMap,FromPt,ToObject,Gap,Tolerance)
+#macro Col_slide_map_to_object(FromObjectMap,FromPt,ToObject,optional ToPt,Gap,Tolerance)
     #local _to_min_ext  = min_extent(ToObject);
     #local _to_max_ext  = max_extent(ToObject);
     #local _to_sz       = _to_max_ext - _to_min_ext;
     #local _to_center   = (_to_min_ext + _to_max_ext)/2;
     
-    #ifdef (Col_slide_verbose) #debug concat("_to_center=<", vstr(3, _to_center, ",", 0, 3), ">\n") #end
+    #ifdef (ToPt)
+        #local _to_pt   = <ToPt.x, _to_center.y, ToPt.y>;
+    #else
+        #local _to_pt   = _to_center;
+    #end        
     
-    #local _xz_dir          = vnormalize(<_to_center.x,0,_to_center.z> - <FromPt.x,0,FromPt.y>);
+    #ifdef (Col_slide_verbose) #debug concat("_to_pt=<", vstr(3, _to_pt, ",", 0, 3), ">\n") #end
+    
+    #local _xz_dir          = vnormalize(<_to_pt.x,0,_to_pt.z> - <FromPt.x,0,FromPt.y>);
     
     #ifdef (Col_slide_verbose) #debug concat("_xz_dir=<", vstr(3,_xz_dir,",",0,3), ">\n") #end
     #local _from_obj_angle  = mod(360+degrees(atan2(_xz_dir.x,_xz_dir.z)),360);
@@ -203,7 +209,7 @@
     #for (i, 0, FromObjectMap.vsteps-1, 1)
         #local _y       = f_clamp(_min_y + i*FromObjectMap.vres, _min_y, _max_y);
         #local _from    = <FromPt.x,_y,FromPt.y>;
-        #local _to      = <_to_center.x,_y,_to_center.z>;
+        #local _to      = <_to_pt.x,_y,_to_pt.z>;
         //#debug concat("trace dir=<", vstr(3, (_to - _from), ",", 0, 3), ">\n")
         #local _nrm     = <0,0,0>;
         #local _hit     = trace(ToObject, _from, (_to - _from), _nrm);
@@ -267,7 +273,7 @@
         #if (_delta > Tolerance)
             // Move the best point away from the center of the
             // cluster object by the max radius
-            #local _push_dir    = vnormalize(_best_pt - <_to_center.x, 0, _to_center.z>);
+            #local _push_dir    = vnormalize(_best_pt - <_to_pt.x, 0, _to_pt.z>);
             #ifdef (Col_slide_verbose) #debug concat("Pushing object from <", vstr(3, _best_pt, ",", 0, 3), "> ") #end
             #local _best_pt     = _best_pt - _push_dir*FromObjectMap.maxrad;          
             #ifdef (Col_slide_verbose) #debug concat("to <", vstr(3, _best_pt, ",", 0, 3), ">\n") #end
@@ -282,7 +288,7 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Col_slide_object_to_object(FromObject,FromPt,ToObject,RRes,HRes,Gap,Tolerance)
+// Col_slide_object_to_object(FromObject,FromPt,ToObject,optional ToPt,RRes,HRes,Gap,Tolerance)
 //
 //      This is a utility macro that first computes the object map for the given FromObject
 //  using the given radial and horizontal resolution values, and then slides the object
@@ -290,12 +296,12 @@
 //
 //  If Col_slide_verbose is defined, the object map is dumped before returning
 //
-#macro Col_slide_object_to_object(FromObject,FromPt,ToObject,RRes,HRes,Gap,Tolerance)
+#macro Col_slide_object_to_object(FromObject,FromPt,ToObject,optional ToPt,RRes,HRes,Gap,Tolerance)
     #local _map = Col_object_map_create(FromObject,RRes,HRes);
     #ifdef (Col_slide_verbose)
         Col_object_map_dump(_map)
     #end
-    Col_slide_map_to_object(_map,FromPt,ToObject,Gap,Tolerance)
+    Col_slide_map_to_object(_map,FromPt,ToObject,ToPt,Gap,Tolerance)
 #end
 
 // End Col_slide_object_to_object

@@ -242,7 +242,7 @@ global_settings {
         #local _new_obj    = object { _pick_object() }
         #local _from3d      = _grove_ctr + vrotate(z*100, <0, 360*rand(Scene_seed), 0>);
         #local _from        = <_from3d.x,_from3d.z>;
-        #local _trans       = Col_slide_object_to_object(_new_obj,_from,_grove,_obj_rres,_obj_vres,_grove_gap,_tolerance);
+        #local _trans       = Col_slide_object_to_object(_new_obj,_from,_grove,,_obj_rres,_obj_vres,_grove_gap,_tolerance);
         #local _grove       = union {
             object { _grove }
             object { _new_obj translate _trans }
