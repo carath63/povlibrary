@@ -282,10 +282,10 @@
         object { _spacing.char_metrics[0].text_obj translate <0, 0, -(Radius + _depth)> }
         #local _cur_rot = 0;
         #for (i, 1, _spacing.text_len-1, 1)
-            #local _cur_rot = _cur_rot + 360*(_spacing.offsets[i-1]/_cyl_circumf);
+            #local _cur_rot = _cur_rot + 360*(_spacing.offsets[i-1]/_cyl_circ);
             object {
                 _spacing.char_metrics[i].text_obj
-                translate <0, 0, -(Radius + Depth)>
+                translate <0, 0, -(Radius + _depth)>
                 rotate <0, -_cur_rot, 0>
             }    
         #end
@@ -296,6 +296,49 @@
 #end
 
 // End Text_metrics_layout_cylindrical
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Text_metrics_layout_helical(TextMetrics,Radius,Rise,optional ZRotate)
+//
+//  Returns a union{} of the individual text characters included in the given
+//  TextMetrics object such that the first character is placed at <0, 0, -Radius>
+//  and subsequent characters are rotated from that position around the Y axis.
+//  The arc-distance between characters is determined by using Text_metrics_spacing_get()
+//  so that the natural kerning for the font is preserved.
+//
+#macro Text_metrics_layout_helical(TextMetrics,Radius,Rise,optional ZRotate)
+    #local _cyl_circ    = 2*pi*Radius;
+    #local _spacing     = Text_metrics_spacing_get(TextMetrics);
+    #local _depth       = TextMetrics.text_size.z;
+    #local _zrotate     = #ifdef(ZRotate) ZRotate; #else false; #end
+    #if (_zrotate)
+        #local _z_rotation_angle    = degrees(atan2(Rise,(2*pi*Radius)));
+    #end    
+
+    #local _text    = union {
+        object { _spacing.char_metrics[0].text_obj translate <0, 0, -(Radius + _depth)> }
+        #local _cur_rot = 0;
+        #for (i, 1, _spacing.text_len-1, 1)
+            #local _cur_rot = _cur_rot + 360*(_spacing.offsets[i-1]/_cyl_circ);
+            #local _cur_y   = Rise*(_cur_rot/360);
+            object {
+                _spacing.char_metrics[i].text_obj
+                #if (_zrotate)
+                    rotate <0, 0, _z_rotation_angle>
+                #end
+                
+                translate <0, _cur_y, -(Radius + _depth)>
+                rotate <0, -_cur_rot, 0>
+            }    
+        #end
+    }
+    
+    _text
+    
+#end
+
+// End Text_metrics_layout_helical
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
@@ -313,38 +356,29 @@
 //  the difference in Y position of the previous character and this character.
 //  DOffset specifies the translation of the character along the Z axis. 
 //                                                                      
-#macro Text_metrics_layout_spline(TextMetrics,Spline,RotateY,RotateZ,DOffset)
-    #local _spacing = Text_metrics_spacing_get(TextMetrics);
+#macro Text_metrics_layout_spline(TextMetrics,Spline,RotateY,RotateZ,optional DOffset,optional Epsilon)
+    #local _doffset = #ifdef(DOffset) DOffset; #else 0; #end
+    #local _epsilon = #ifdef(Epsilon) Epsilon; #else 1e-4; #end
+    
+    #local _spacing     = Text_metrics_spacing_get(TextMetrics);
+    #local _offset_locs = array[_spacing.text_len];
+    #local _offset_locs[0]  = 0;
+    #for (i, 0, _spacing.num_spaces-1, 1)
+        #local _offset_locs[i+1]    = _offset_locs[i] + _spacing.offsets[i];
+    #end
+    
+    #local _cdist   = 0.0;
     
     #local _text    = union {
-        #local _cur_len     = 0;
-        #local _positions   = array[_spacing.text_len];
-        
-        #for (i, 0, _spacing.text_len-1, 1)
-            #local _positions[i]    = Spline(_cur_len);
-            #if (i < _spacing.text_len-1)
-                #local _cur_len         = _cur_len + _spacing.offsets[i];
-            #end    
-        #end
-        
         #for (i, 0, _spacing.text_len-1, 1)
             object {
                 _spacing.char_metrics[i].text_obj
-                translate <0, 0, DOffset>
+                translate <0, 0, _doffset>
                 
                 #if (RotateY | RotateZ)
-                    #if (i > 0)
-                        #local _p1  = _positions[i-1];
-                    #else
-                        #local _p1  = _positions[i];
-                    #end
-                    #if (i < _spacing.text_len-1)
-                        #local _p2  = _positions[i+1];
-                    #else
-                        #local _p2  = _positions[i];
-                    #end
-                    #local _p_dir       = vnormalize(_p2 - _p1);
-                    
+                    #local _p1      = Spline(_offset_locs[i] - _epsilon);
+                    #local _p2      = Spline(_offset_locs[i] + _epsilon);
+                    #local _p_dir   = vnormalize(_p2 - _p1);
                     #if (RotateZ)
                         #local _z_rotate    = degrees(atan2(_p_dir.y, sqrt(_p_dir.x*_p_dir.x+_p_dir.z*_p_dir.z)));
                         rotate <0, 0, _z_rotate>
@@ -355,15 +389,28 @@
                         rotate <0, _y_rotate, 0>                 
                     #end
                     
-                #end    
+                #end
                 
-                translate _positions[i]
+                #local _pos = Spline(_offset_locs[i]);
+                #ifdef (Text_metrics_layout_spline_verbose)
+                #debug concat(_spacing.char_metrics[i].text_str, ": offset=", str(_offset_locs[i], 0, 3), "; pos=<", vstr(3, _pos, ",", 0, 3), ">")
+                #ifdef (_prev_pos)
+                    #local _dist    = vlength(_pos - _prev_pos);
+                    #local _cdist   = _cdist + _dist;
+                    #debug concat("; distance=", str(vlength(_pos - _prev_pos), 0, 3), "; cum distance=", str(_cdist, 0, 3), "\n")
+                #else
+                    #debug "\n"
+                #end
+                #end 
+                translate _pos
+                
+                #local _prev_pos    = _pos;
             }    
         #end
-        
     }
     
     _text
+    
 #end
 
 // End Text_metrics_layout_spline
