@@ -67,7 +67,7 @@ global_settings {
 // Camera default configuration
 //
 
-#declare camera_location        = <0, Math_Scale(SCALE_INCH, 4), -Math_Scale(SCALE_INCH, 36)>;
+#declare camera_location        = <0, Math_Scale(SCALE_INCH, 4), -Math_Scale(SCALE_INCH, 48)>;
 #declare camera_lookat          = <0, 0, 0>;
 #declare camera_blur_focus      = camera_lookat;
 #declare camera_use_blur        = false;
@@ -159,6 +159,43 @@ global_settings {
 //-----------------------------------------------------------------------------
 // Scene_spline_text_object()
 //
+#macro Spline_type_keyword(SplineType)
+    #switch(0)
+        #case(strcmp(strlwr(SplineType),"linear_spline"))
+            linear_spline
+        #break
+        #case(strcmp(strlwr(SplineType),"natural_spline"))
+            natural_spline
+        #break
+        #case(strcmp(strlwr(SplineType),"quadratic_spline"))
+            quadratic_spline
+        #break
+        #case(strcmp(strlwr(SplineType),"cubic_spline"))
+            cubic_spline
+        #break
+        #else
+            #error concat("Unknown spline type ", SplineType, "\n")
+        #break                    
+    #end
+    
+#end
+
+#macro Spline_distance_create(Spline,SplineType,Min,Max,Epsilon)
+
+    spline {
+        Spline_type_keyword(SplineType)
+        #local _d   = 0;
+        #local _p   = Spline(Min);
+        _d, _p,
+        #for (i, Min+Epsilon, Max, Epsilon)
+            #local _pn  = Spline(i);
+            #local _d   = _d + vlength(_pn - _p);
+            #local _p   = _pn;
+            _d, _p,
+        #end
+    }
+#end
+
 #macro Scene_spline_text_object()
     #local _fnt         = #ifdef (Scene_spline_font) Scene_spline_font; #else "timrom.ttf"; #end
     #local _str         = #ifdef (Scene_spline_text) Scene_spline_text; #else "Now is the time for all good people to come to the aid of their country"; #end
@@ -166,7 +203,7 @@ global_settings {
     #local _o           = #ifdef (Scene_spline_text_offset) Scene_spline_text_offset; #else <0,0,0>; #end
     #local _tlen        = #ifdef (Scene_spline_text_length) Scene_spline_text_length; #else 100; #end
     #local _yrotate     = #ifdef (Scene_spline_yrotate) Scene_spline_yrotate; #else true; #end
-    #local _zrotate     = #ifdef (Scene_spline_zrotate) Scene_helix_zrotate; #else false; #end
+    #local _zrotate     = #ifdef (Scene_spline_zrotate) Scene_helix_zrotate; #else true; #end
     #local _r_cyl       = #ifdef (Scene_cyl_radius) Scene_cyl_radius; #else Math_Scale(SCALE_INCH, 4); #end
     #local _epsilon     = #ifdef (Scene_spline_epsilon) Scene_spline_epsilon; #else 1e-4; #end
 
@@ -181,14 +218,17 @@ global_settings {
         #local _spline  = spline {
             quadratic_spline
             0, <-25, 0, -1.2*_r_cyl>,
-            50, <0, 0, -2*_r_cyl>,
-            100, <100, 0, -1.2*_r_cyl>,
-            200, <200, 0, -1.2*_r_cyl>
+            25, <0, _scaled_metrics.text_size.y, -2*_r_cyl>,
+            50, <25, 0, 1.2*_r_cyl>,
+            100, <75, 2*_scaled_metrics.text_size.y, 1.2*_r_cyl>
         }       
     #end
     
+    #local _spline_type = #ifdef (Scene_spline_spline_type) Scene_spline_spline_type; #else "quadratic_spline"; #end
+    #local _dspline = Spline_distance_create(_spline,_spline_type,0,200,0.5)
+    
     #local _spline_text = object {
-        Text_metrics_layout_spline(_scaled_metrics,_spline,_yrotate,_zrotate,-_d/2,_epsilon)
+        Text_metrics_layout_spline(_scaled_metrics,_dspline,_yrotate,_zrotate,-_d/2,_epsilon)
         pigment { color rgb <0, 0, 1> }
     }
     
