@@ -25,6 +25,7 @@
 #include "libscale.inc"
 #include "liblights.inc"
 #include "libtext.inc"
+#include "libspline.inc"
 
 // End My Includes
 //-----------------------------------------------------------------------------
@@ -159,43 +160,6 @@ global_settings {
 //-----------------------------------------------------------------------------
 // Scene_spline_text_object()
 //
-#macro Spline_type_keyword(SplineType)
-    #switch(0)
-        #case(strcmp(strlwr(SplineType),"linear_spline"))
-            linear_spline
-        #break
-        #case(strcmp(strlwr(SplineType),"natural_spline"))
-            natural_spline
-        #break
-        #case(strcmp(strlwr(SplineType),"quadratic_spline"))
-            quadratic_spline
-        #break
-        #case(strcmp(strlwr(SplineType),"cubic_spline"))
-            cubic_spline
-        #break
-        #else
-            #error concat("Unknown spline type ", SplineType, "\n")
-        #break                    
-    #end
-    
-#end
-
-#macro Spline_distance_create(Spline,SplineType,Min,Max,Epsilon)
-
-    spline {
-        Spline_type_keyword(SplineType)
-        #local _d   = 0;
-        #local _p   = Spline(Min);
-        _d, _p,
-        #for (i, Min+Epsilon, Max, Epsilon)
-            #local _pn  = Spline(i);
-            #local _d   = _d + vlength(_pn - _p);
-            #local _p   = _pn;
-            _d, _p,
-        #end
-    }
-#end
-
 #macro Scene_spline_text_object()
     #local _fnt         = #ifdef (Scene_spline_font) Scene_spline_font; #else "timrom.ttf"; #end
     #local _str         = #ifdef (Scene_spline_text) Scene_spline_text; #else "Now is the time for all good people to come to the aid of their country"; #end
@@ -225,7 +189,7 @@ global_settings {
     #end
     
     #local _spline_type = #ifdef (Scene_spline_spline_type) Scene_spline_spline_type; #else "quadratic_spline"; #end
-    #local _dspline = Spline_distance_create(_spline,_spline_type,0,200,0.5)
+    #local _dspline = Spline_create_distance_spline(_spline,_spline_type,0,100,1)
     
     #local _spline_text = object {
         Text_metrics_layout_spline(_scaled_metrics,_dspline,_yrotate,_zrotate,-_d/2,_epsilon)

@@ -416,6 +416,37 @@
 // End Text_metrics_layout_spline
 //-----------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------
+// Text_metrics_layout_circular(TextMetrics,Radius)
+//
+//  Returns a union{} of individual text characters included in the given
+//  TextMetrics object such that the first character is placed at <0,0,0> and
+//  subsequent characters are placed rotated around the axis z=Radius using
+//  the Text_metrics_spacing_get() results.
+//
+#macro Text_metrics_layout_circular(TextMetrics,Radius)
+    #local _circ        = 2*pi*Radius;
+    #local _spacing     = Text_metrics_spacing_get(TextMetrics);
+    
+    #local _text    = union {
+        #local _cur_rot = 0;
+        object { _spacing.char_metrics[0].text_obj translate <0, -Radius, 0> }
+        #for (i, 1, _spacing.text_len-1, 1)
+            #local _cur_rot = _cur_rot + 360*(_spacing.offsets[i-1]/_circ);
+            object {
+                _spacing.char_metrics[i].text_obj
+                translate <0, -Radius, 0>
+                rotate <0, 0, _cur_rot>
+            }    
+        #end
+    }
+    
+    _text
+#end
+
+// End Text_metrics_layout_circular
+//-----------------------------------------------------------------------------
+
 // End Text Layout Utilities
 //=============================================================================
 

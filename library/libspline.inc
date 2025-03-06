@@ -1,0 +1,106 @@
+/******************************************************************************
+ * File: libspline.inc
+ * Description:
+ *      Library of spline utilities
+ ******************************************************************************/
+
+#ifndef(Libspline_Inc_Temp)
+
+#declare Libspline_Inc_Temp = version;
+#version 3.8;
+
+#ifdef(View_POV_Include_Stack)
+    #debug "including libspline.inc\n"
+#end                     
+
+//=============================================================================
+// Includes
+//
+
+//-----------------------------------------------------------------------------
+// Standard Includes
+//
+
+// End Standard Includes
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// My Includes
+//
+
+// End My Includes
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Pre-include Constants
+//
+
+// End Pre-include Constants
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Project Includes
+//
+
+// End Project Includes
+//-----------------------------------------------------------------------------
+
+// End Includes
+//=============================================================================
+
+//=============================================================================
+// Spline_type_from_string(TypeString)
+//
+#macro Spline_type_from_string(TypeString)
+    #switch(0)
+        #case(strcmp(strlwr(TypeString),"linear_spline"))
+        #case(strcmp(strlwr(TypeString),"linear"))
+            linear_spline
+        #break
+        #case(strcmp(strlwr(TypeString),"natural_spline"))
+        #case(strcmp(strlwr(TypeString),"natural"))
+            natural_spline
+        #break
+        #case(strcmp(strlwr(TypeString),"quadratic_spline"))
+        #case(strcmp(strlwr(TypeString),"quadratic"))
+            quadratic_spline
+        #break
+        #case(strcmp(strlwr(TypeString),"cubic_spline"))
+        #case(strcmp(strlwr(TypeString),"cubic"))
+            cubic_spline
+        #break
+        #else
+            #error concat("Unknown spline type ", TypeString, "\n")
+        #break                    
+    #end
+    
+#end
+
+// End Spline_type_from_string
+//=============================================================================
+
+//=============================================================================
+// Spline_create_distance_spline(Spline,TypeString,MinValue,MaxValue,Epsilon)
+//
+#macro Spline_create_distance_spline(Spline,TypeString,MinValue,MaxValue,Epsilon)
+
+    spline {
+        Spline_type_from_string(TypeString)
+        #local _d   = 0;
+        #local _p   = Spline(MinValue);
+        _d, _p,
+        #for (i, MinValue+Epsilon, MaxValue, Epsilon)
+            #local _pn  = Spline(i);
+            #local _d   = _d + vlength(_pn - _p);
+            #local _p   = _pn;
+            _d, _p,
+        #end
+    }
+#end
+
+// End Spline_create_distance_spline
+//=============================================================================
+
+#version Libspline_Inc_Temp;
+
+#end // ifndef (Libspline_Inc_Temp)
