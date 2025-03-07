@@ -189,12 +189,12 @@ global_settings {
     #end
     
     #local _spline_type = #ifdef (Scene_spline_spline_type) Scene_spline_spline_type; #else "quadratic_spline"; #end
-    #local _dspline = Spline_create_distance_spline(_spline,_spline_type,0,100,1)
+    #local _dspline = Spline_create_distance_spline(_spline,_spline_type,0,100,1,-1,<-25.1,0,-1.2*_r_cyl>,<76,0,1.2*_r_cyl>)
     
     #local _spline_text = object {
-        Text_metrics_layout_spline(_scaled_metrics,_dspline,_yrotate,_zrotate,-_d/2,_epsilon)
-        pigment { color rgb <0, 0, 1> }
-    }
+        Text_metrics_layout_spline(_scaled_metrics,_dspline,y,0.1,1,-_d/2)
+        pigment { color rgb <0, 1, 0> }
+    } 
     
     _spline_text    
 

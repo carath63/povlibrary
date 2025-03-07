@@ -80,12 +80,16 @@
 //=============================================================================
 
 //=============================================================================
-// Spline_create_distance_spline(Spline,TypeString,MinValue,MaxValue,Epsilon)
+// Spline_create_distance_spline(Spline,TypeString,MinValue,MaxValue,Epsilon,optional NegValue, optional NegPoint, optional EndPoint)
 //
-#macro Spline_create_distance_spline(Spline,TypeString,MinValue,MaxValue,Epsilon)
+#macro Spline_create_distance_spline(Spline,TypeString,MinValue,MaxValue,Epsilon,optional NegValue, optional NegPoint, optional EndPoint)
 
     spline {
         Spline_type_from_string(TypeString)
+        #ifdef (NegPoint)
+            #local _nv  = #ifdef(NegValue) NegValue; #else -1; #end
+            _nv, NegPoint,
+        #end
         #local _d   = 0;
         #local _p   = Spline(MinValue);
         _d, _p,
@@ -94,6 +98,12 @@
             #local _d   = _d + vlength(_pn - _p);
             #local _p   = _pn;
             _d, _p,
+        #end
+        
+        #ifdef(EndPoint)
+            #local _d   = _d + vlength(EndPoint - _p);
+            #local _p   = EndPoint;
+            _d, _p
         #end
     }
 #end

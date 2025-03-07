@@ -21,6 +21,7 @@
 //-----------------------------------------------------------------------------
 // Standard Includes
 //
+#include "transforms.inc"
 
 // End Standard Includes
 //-----------------------------------------------------------------------------
@@ -355,7 +356,8 @@
 //  If RotateZ is true, the character is also rotated on the Z axis based on
 //  the difference in Y position of the previous character and this character.
 //  DOffset specifies the translation of the character along the Z axis. 
-//                                                                      
+//
+#if (false)                                                                      
 #macro Text_metrics_layout_spline(TextMetrics,Spline,RotateY,RotateZ,optional DOffset,optional Epsilon)
     #local _doffset = #ifdef(DOffset) DOffset; #else 0; #end
     #local _epsilon = #ifdef(Epsilon) Epsilon; #else 1e-4; #end
@@ -406,6 +408,44 @@
                 
                 #local _prev_pos    = _pos;
             }    
+        #end
+    }
+    
+    _text
+    
+#end
+#end /* if(false) */
+
+// End Text_metrics_layout_spline
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Text_metrics_layout_spline(TextMetrics,Spline,Sky,Foresight,Banking,optional DOffset)
+//
+//  This is another version of the Text_metrics_layout_spline that uses the
+//  Spline_Transform() macro from transforms.inc to rotate and place the characters
+//  which allows for banking and alternative sky vectors.
+//
+#macro Text_metrics_layout_spline(TextMetrics,Spline,Sky,Foresight,Banking,optional DOffset)
+    #local _doffset = #ifdef(DOffset) DOffset; #else 0; #end
+    #local _spacing     = Text_metrics_spacing_get(TextMetrics);
+    #local _offset_locs = array[_spacing.text_len];
+    #local _offset_locs[0]  = 0;
+    #for (i, 0, _spacing.num_spaces-1, 1)
+        #local _offset_locs[i+1]    = _offset_locs[i] + _spacing.offsets[i];
+    #end
+    
+    #local _cdist   = 0.0;
+    
+    #local _text    = union {
+        #for (i, 0, _spacing.text_len-1, 1)
+            object {
+                _spacing.char_metrics[i].text_obj
+                translate <0, 0, _doffset>
+                rotate <0, -90, 0>
+                
+                Spline_Trans (Spline, _offset_locs[i], Sky, Foresight, Banking)
+            }        
         #end
     }
     
