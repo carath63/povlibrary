@@ -207,6 +207,45 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+// Text_metrics_center(TextMetrics,optional Point,optional Axes)
+//
+#macro Text_metrics_center(TextMetrics,optional Point,optional Axes)
+    #local _point   = #ifdef (Point) Point; #else <0,0,0>; #end
+    #local _axes    = #ifdef (Axes) <1,1,1>*Axes; #else <1,1,1>; #end
+    
+    #local _ctr     = (TextMetrics.text_min + TextMetrics.text_max)/2;
+    #local _ctr2    = <0,0,0>;
+    #if (_axes.x)
+        #local _ctr2    = _ctr2 + <_ctr.x, 0, 0>;
+    #end
+    #if (_axes.y)
+        #local _ctr2    = _ctr2 + <0, _ctr.y, 0>;
+    #end
+    #if (_axes.z)
+        #local _ctr2    = _ctr2 + <0, 0, _ctr.z>;
+    #end             
+    #local _trans   = _point - _ctr2;
+    
+    #local _tm  = dictionary {
+        .font_type: TextMetrics.font_type,
+        .font_name: TextMetrics.font_name,
+        .text_str:  TextMetrics.text_str,
+        .text_depth:    TextMetrics.text_depth,
+        .text_offset:   TextMetrics.text_offset,
+        .text_max:      TextMetrics.text_max + _trans,
+        .text_min:      TextMetrics.text_min + _trans,
+        .text_size:     TextMetrics.text_size,
+        .text_obj:      object { TextMetrics.text_obj translate _trans },
+        .text_scale:    TextMetrics.text_scale
+    }
+    
+    _tm
+#end
+
+// End Text_metrics_center
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // Text_metrics_spacing_get(TextMetrics)
 //
 //  Returns a dictionary{} containing the intra-character spacing and character offsets

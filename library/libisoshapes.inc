@@ -4296,5 +4296,128 @@ float sdHexagon( in vec2 p, in float r )
 // End 2D Extrusion Functions
 //=============================================================================
 
+//=============================================================================
+// Iso Surface Utilities for CSG Objects
+//
+
+//-----------------------------------------------------------------------------
+// Iso_object_scale_gradient_create(OuterValue)
+//
+#macro Iso_object_scale_gradient_create(OuterValue)
+    #local _gradient    = dictionary {
+        .num_entries:   0,
+        .entries:       array,
+        .outer_value:   OuterValue
+    }
+    ;
+    
+    _gradient
+#end
+
+// End Iso_object_scale_gradient_create
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_object_scale_gradient_add(Gradient,Scale,Value)
+//
+#macro Iso_object_scale_gradient_add(Gradient,Scale,Value)
+    #declare Gradient.entries[Gradient.num_entries] = dictionary {
+        .gscale:    Scale*<1,1,1>,
+        .gvalue:    Value
+    };
+    #declare Gradient.num_entries   = Gradient.num_entries + 1;    
+#end
+
+// End Iso_object_scale_gradient_add
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_object_scale_gradient_create_size(ObjectSize,InnerSize,InnerValue,InnerSteps,ExteriorSize,ExteriorValue,ExteriorSteps,OuterValue)
+//
+#macro Iso_object_scale_gradient_create_size(ObjectSize,InnerSize,optional InnerValue,InnerSteps,ExteriorSize,optional ExteriorValue,ExteriorSteps,OuterValue)
+    #local _g   = Iso_object_scale_gradient_create(OuterValue)
+    
+    #local _iv  = #ifdef(InnerValue) InnerValue; #else -InnerSize; #end
+    #local _ev  = #ifdef(ExteriorValue) ExteriorValue; #else ExteriorSize; #end
+    
+    #if (InnerSteps > 0)
+        #local _si  = InnerSize/InnerSteps;
+        #local _siv = _iv/InnerSteps;
+        #for (i, 0, InnerSteps-1, 1)
+            #local _v   = _iv - i*_siv;
+            #local _s   = ((ObjectSize - InnerSize) + i*_si)/ObjectSize;
+            Iso_object_scale_gradient_add(_g, _s, _v)
+        #end
+    #end
+    
+    Iso_object_scale_gradient_add(_g, <1,1,1>, 0)
+    
+    #if (ExteriorSteps > 0)
+        #local _so  = ExteriorSize/ExteriorSteps;
+        #local _sov = _ev/ExteriorSteps;
+        #for (i, 1, ExteriorSteps, 1)
+            #local _v   = i*_sov;
+            #local _s   = (ObjectSize + i*_so)/ObjectSize;
+            Iso_object_scale_gradient_add(_g, _s, _v)
+        #end
+    #end
+    
+    _g
+#end
+
+// End Iso_object_scale_gradient_create_size
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_object(Object,Gradient)
+// 
+//      Creates a pseudo-sdf function(x,y,z) that returns the distance of
+//      a point to the given object using a pigment { object{} } function
+//      and the given Gradient of values.
+//
+#macro Iso_object(Object,Gradient)
+    #local _object_pfn  = function {
+        pigment {
+            object {
+                Object
+                rgb 1
+                rgb -1
+            }
+        }
+    }
+            
+    #macro _do_gradient(i)
+        #local _sx  = Gradient.entries[i].gscale.x;
+        #local _sy  = Gradient.entries[i].gscale.y;
+        #local _sz  = Gradient.entries[i].gscale.z;
+        #local _v   = Gradient.entries[i].gvalue;
+        
+        #ifdef (Iso_object_debug)
+            #debug concat("select(_object_pfn(x/", str(_sx, 0, 3), ",y/", str(_sy, 0, 3), ",z/", str(_sz, 0, 3), ").gray,\n    ", str(_v, 0, 3), ",\n")
+        #end    
+        select(_object_pfn(x/_sx,y/_sy,z/_sz).gray,
+            _v,
+        #if (i+1 < Gradient.num_entries)
+            _do_gradient(i+1)
+        #else
+            #ifdef (Iso_object_debug) #debug concat(str(Gradient.outer_value, 0, 3), "\n") #end
+            Gradient.outer_value
+        #end
+        #ifdef (Iso_object_debug) #debug ")\n" #end
+        )
+    #end
+    
+    function(x,y,z) {
+        _do_gradient(0)
+    }
+    
+#end
+
+// end Iso_object
+//-----------------------------------------------------------------------------
+
+// End Iso Surface Utilities for CSG Objects
+//=============================================================================
+
 #version Libisoshapes_Inc_Temp;
 #end // ifndef(Libisoshapes_Inc_Temp)

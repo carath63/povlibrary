@@ -161,7 +161,7 @@ global_settings {
 // Scene_spline_text_object()
 //
 #macro Scene_spline_text_object()
-    #local _fnt         = #ifdef (Scene_spline_font) Scene_spline_font; #else "timrom.ttf"; #end
+    #local _fnt         = #ifdef (Scene_spline_font) Scene_spline_font; #else "itcedscr.ttf"; #end
     #local _str         = #ifdef (Scene_spline_text) Scene_spline_text; #else "Now is the time for all good people to come to the aid of their country"; #end
     #local _d           = #ifdef (Scene_spline_text_depth) Scene_spline_text_depth; #else Math_Scale(SCALE_INCH, 1/4); #end
     #local _o           = #ifdef (Scene_spline_text_offset) Scene_spline_text_offset; #else <0,0,0>; #end
