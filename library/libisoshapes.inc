@@ -4369,20 +4369,16 @@ float sdHexagon( in vec2 p, in float r )
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Iso_object(Object,Gradient)
+// Iso_object_pigment(Pigment,Gradient)
 // 
 //      Creates a pseudo-sdf function(x,y,z) that returns the distance of
 //      a point to the given object using a pigment { object{} } function
 //      and the given Gradient of values.
 //
-#macro Iso_object(Object,Gradient)
+#macro Iso_object_pigment(Pigment,Gradient)
     #local _object_pfn  = function {
         pigment {
-            object {
-                Object
-                rgb 1
-                rgb -1
-            }
+            Pigment
         }
     }
             
@@ -4411,6 +4407,30 @@ float sdHexagon( in vec2 p, in float r )
         _do_gradient(0)
     }
     
+#end
+
+// end Iso_object_pigment
+//-----------------------------------------------------------------------------
+
+
+//-----------------------------------------------------------------------------
+// Iso_object(Object,Gradient)
+// 
+//      Creates a pseudo-sdf function(x,y,z) that returns the distance of
+//      a point to the given object using a pigment { object{} } function
+//      and the given Gradient of values.
+//
+#macro Iso_object(Object,Gradient)
+    #local _p   = pigment {
+        object {
+            Object
+            rgb 1
+            rgb -1
+        }
+    }
+    
+    Iso_object_pigment(_p,Gradient)
+            
 #end
 
 // end Iso_object

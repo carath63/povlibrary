@@ -483,7 +483,7 @@
                 translate <0, 0, _doffset>
                 rotate <0, -90, 0>
                 
-                Spline_Trans (Spline, _offset_locs[i], Sky, Foresight, Banking)
+                Spline_trans (Spline, _offset_locs[i], Foresight, Sky, Banking)
             }        
         #end
     }

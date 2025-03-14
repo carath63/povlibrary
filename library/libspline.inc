@@ -106,9 +106,63 @@
             _d, _p
         #end
     }
+    
+    #debug concat("Spline_create_distance_spline: total distance = ", str(_d, 0, 6), "\n")
 #end
 
 // End Spline_create_distance_spline
+//=============================================================================
+
+//=============================================================================
+// Spline transformation macros
+//
+
+//-----------------------------------------------------------------------------
+// Spline_trans(Spline, Time, Foresight, optional Sky, optional Banking)
+//
+//      This is a replacement for transforms.inc: Spline_Trans(Spline,Time,Sky,Foresight,Banking)
+//      that fixes an issue when the forward direction of the object based on the spline
+//      results aligns with the Sky vector.  This version checks to see if
+//      vlength(vcross(Sky,forward)) is 0, and if so, sets the right vector
+//      to x, transformed with the transformation to align y to Sky.
+//
+#macro Spline_trans(Spline, Time, Foresight, optional Sky, optional Banking)
+    #local _sky = #ifdef(Sky) Sky; #else y; #end
+    #local _banking = #ifdef(Banking) Banking; #else 0; #end
+
+    #local _location        = <0,0,0>+Spline(Time);
+    #local _locationNext    = <0,0,0>+Spline(Time+Foresight);
+    #local _locationPrev    = <0,0,0>+Spline(Time-Foresight);
+    #local _forward         = vnormalize(_locationNext-_location);
+    #if (vlength(vcross(Sky,_forward)) = 0)
+        #local _ytrans  = Reorient_Trans(y, Sky)
+        #local _right   = vtransform(x, _ytrans);
+    #else
+        #local _right   = VPerp_To_Plane(Sky,_forward);
+    #end
+    
+    #local _up              = VPerp_To_Plane(_forward,_right);
+    #local _matrix          = _matrix_Trans(_right,_up,_forward,_location)
+    #local _bankingRotation =
+        degrees(atan2(
+                        VRotation(
+                            VProject_Plane((_locationNext-_location),Sky),
+                            VProject_Plane((_location-_locationPrev),Sky),
+                            _up
+                        )*_banking
+                        ,1
+        ));
+        
+    #local _t   = transform {
+        rotate _bankingRotation*z
+        transform _matrix
+    }
+    
+    _t;
+    
+#end
+
+// End Spline transformation macros
 //=============================================================================
 
 #version Libspline_Inc_Temp;
