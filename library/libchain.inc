@@ -67,7 +67,7 @@
 //      .link_obj:   (optional) fixed object representing a chaing link
 //
 //  If .link_obj is defined, then all links in the chain use the same
-//  object.  If it is not defined, then you must define the macro Chain_link_obj_create(...)
+//  object.  If it is not defined, then you must define the macro Chain_layout_link_obj_create(...)
 //  to create a new object for each link in the chain.  The parameters define the position
 //  in the chain and its 3D position in space that can be used to define variants.
 //
@@ -104,22 +104,17 @@
 //
 //      .link_spec_count:   number of link specs for the chain
 //      .link_specs:        array of Chain_link_specs
-//      .link_select_fn:    optional function(N) that selects the Chain_link_spec to use when adding multiple links
-//      .link_count:        optional total number of links available in the chain
 
 //-----------------------------------------------------------------------------
-// Chain_spec_create(LinkSpec,optional LinkCount)
+// Chain_spec_create(LinkSpec)
 //
-#macro Chain_spec_create(LinkSpec,optional LinkCount)
-    #local _link_specs  = array;
+#macro Chain_spec_create(LinkSpec)
+    #local _link_specs      = array;
     #local _link_specs[0]   = LinkSpec;
     
     #local _spec    = dictionary {
         .link_spec_count:   1,
         .link_specs:        _link_specs,
-        #ifdef(LinkCount)
-        .link_count:        LinkCount,
-        #end
     };
     
     _spec
@@ -129,42 +124,14 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Chain_spec_add_link_spec(ChainSpec,LinkSpec,optional SelectFn)
+// Chain_spec_add_link_spec(ChainSpec,LinkSpec)
 //
-#macro Chain_spec_add_link_spec(ChainSpec,LinkSpec,optional SelectFn)
+#macro Chain_spec_add_link_spec(ChainSpec,LinkSpec)
     #declare ChainSpec.link_specs[ChainSpec.link_spec_count]    = LinkSpec;
     #declare ChainSpec.link_spec_count  = ChainSpec.link_spec_count + 1;
-    #ifdef (SelectFn)
-    #declare ChainSpec.link_select_fn   = SelectFn;
-    #end
 #end
 
 // End Chain_spec_add_link_spec
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-// Chain_spec_select_link_spec(ChainSpec,LinkNumber)
-//
-#macro Chain_spec_select_link_spec(ChainSpec,LinkNumber)
-    #if (ChainSpec.link_spec_count = 1)
-        #local _link_spec   = ChainSpec.link_specs[0];
-    #else
-        #ifdef (ChainSpec.link_select_fn)
-            #local _link_spec_n = ChainSpec.link_select_fn(LinkNumber);
-            #if (_link_spec_n >= ChainSpec.link_spec_count)
-                #warning concat("Chain_spec_select_link_spec: Select function returned link spec number ", str(_link_spec_n, 0, 0), " which is out of bounds: using ", str(ChainSpec.link_spec_count-1, 0, 0), "\n")
-                #local _link_spec_n = ChainSpec.link_spec_count-1;
-            #end
-        #else
-            #local _link_spec_n = mod(LinkNumber, ChainSpec.link_spec_count);
-        #end
-        #local _link_spec   = ChainSpec.link_specs[_link_spec_n];    
-    #end 
-    
-    _link_spec   
-#end
-
-// End Chain_spec_select_link_spec
 //-----------------------------------------------------------------------------
 
 // End Chain Definitions
@@ -178,22 +145,7 @@
 //
 
 //-----------------------------------------------------------------------------
-// Chain_link_obj_create(LinkSpec,LinkNumber,BackLoc,FrontLoc)
-//
-//      If any Chain_link_spec does not contain a defined .link_obj, then this
-//  macro must be defined to create an instance of the chain link in its
-//  standard position and orientation.  The supplied LinkSpec can be used to
-//  determine what type of link to create, the LinkNumber and LinkLayout info
-//  can be used to add variations that could depend on which link in the chain
-//  is being rendered, or random variations using the location of the chain.
-//
-//  The macro should return an object{} for the link whose BackLoc is <0,0,0>
-//  and whose FrontLoc is BackLoc + <0, 0, LinkSpec.link_inner.y>
-//
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-// Chain_link_layout_create(LinkObj,LinkRot,BackLoc,FrontLoc)
+// Chain_layout_link_create(LinkSpec,optional LinkObj,LinkRot,BackLoc,FrontLoc)
 //
 //      Creates a dictionary{} consisting of:
 //      .link_obj:  LinkObj,
@@ -204,9 +156,12 @@
 //  This is the smallest unit of a Chain_layout representing a single
 //  link in the chain.  It is generally created by other Chain_layout macros.
 //
-#macro Chain_link_layout_create(LinkObj,LinkRot,BackLoc,FrontLoc)
+#macro Chain_layout_link_create(LinkSpec, optional LinkObj,LinkRot,BackLoc,FrontLoc)
     #local _layout  = dictionary {
+        .link_spec: LinkSpec,
+        #ifdef(LinkObj)
         .link_obj:  LinkObj,
+        #end
         .link_rot:  LinkRot,
         .link_back: BackLoc,
         .link_front:    FrontLoc,
@@ -215,16 +170,33 @@
     _layout    
 #end
 
-// End Chain_link_layout_create
+// End Chain_layout_link_create
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Chain_link_layout_trans(LinkLayout)
+// Chain_layout_link_create_oriented(LinkSpec, optional LinkObj, LinkRot, BackLoc, Orientation)
+//
+//      This is a utility macro that calls Chain_layout_link_create() with a computed
+//  FrontLoc based on the inner length from the LinkSpec rotated to the given Orientation
+//  and then translated to the given BackLoc.
+//
+#macro Chain_layout_link_create_oriented(LinkSpec, optional LinkObj, LinkRot, BackLoc, Orientation)
+    #local _front_trans = Reorient_Trans(z, Orientation)
+    #local _front_loc   = BackLoc + vtransform(<0, 0, LinkSpec.link_inner.y>, _front_trans);
+    
+    Chain_layout_link_create(LinkSpec, LinkObj, LinkRot, BackLoc, _front_loc)
+#end
+
+// End Chain_layout_link_create_oriented
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Chain_layout_link_transform(LinkLayout)
 // 
 //  Creates the full transform{} for the given LinkLayout based on the
 //  .link_rot and .link_back and .link_front information.
 //
-#macro Chain_link_layout_trans(LinkLayout)
+#macro Chain_layout_link_transform(LinkLayout)
     #local _forward = vnormalize(LinkLayout.link_front - LinkLayout.link_back);
     #local _right   = #if (vlength(vcross(y,_forward)) = 0) x; #else VPerp_To_Plane(y,_forward); #end
     #local _up      = VPerp_To_Plane(_forward,_right);
@@ -238,39 +210,156 @@
     _t    
 #end
 
-// End Chain_link_layout_trans
+// End Chain_layout_link_transform
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Chain_link_layout_render(LinkLayout)
+// Chain_layout_link_object(LinkLayout,LinkNum)
 //
-#macro Chain_link_layout_render(LinkLayout)
+//  Returns the actual object{} representing the link with the given
+//  LinkLayout whose position in the chain is LinkNum.  It uses a cascading
+//  method of determining the object:
+//      1. If the LinkLayout has a .link_obj defined, use that
+//      2. If the customized Chain_layout_link_obj_create(LinkLayout,LinkNum) macro is defined, call that
+//      3. If the .link_spec in the LinkLayout has a default .link_obj defined for it, use that
+//  Otherwise, if none of these are true, throw an error
+//
+#macro Chain_layout_link_object(LinkLayout,LinkNum)
+    #ifdef (LinkLayout.link_obj)
+        #local _link_obj    = object { LinkLayout.link_obj }
+    #else
+        #ifdef(Chain_layout_link_obj_create)
+            #local _link_obj    = object { Chain_layout_link_obj_create(LinkLayout,LinkNum) }
+        #else
+            #ifdef (LinkLayout.link_spec.link_obj)
+                #local _link_obj    = object { LinkLayout.link_spec.link_obj }
+            #else
+                #error concat("Chain_layout_link_object: No method to create link object\n")
+            #end
+        #end    
+    #end 
+    
+    _link_obj   
+#end
+
+// End Chain_layout_link_object
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Chain_layout_link_render(LinkLayout,LinkNum)
+//
+#macro Chain_layout_link_render(LinkLayout,LinkNum)
     #local _link    = object {
-        LinkLayout.link_obj
-        transform { Chain_link_layout_trans(LinkLayout) }
+        Chain_layout_link_object(LinkLayout,LinkNum)
+        transform { Chain_layout_link_transform(LinkLayout) }
     }
     
     _link    
 #end
 
-// End Chain_link_layout_render
+// End Chain_layout_link_render
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Chain_layout_create(ChainSpec,optional LinkRotFn)
+// Chain_layout_options_create(optional LinkSpecSelectFn, optional LinkOffsetFn, optional LinkRotFn)
+//
+//      Creates a dictionary{} consisting of:
+//          .link_spec_select_fn(N,x,y,z)
+//          .link_z_offset_fn(N,x,y,z)
+//          .link_z_rot_fn(N,x,y,z)
+//
+//      with default implementations if not provided:
+//          .link_spec_select_fn(N,x,y,z) { mod(N, ChainSpec.link_spec_count) } (computed on the fly when needed)
+//          .link_z_offset_fn(N,x,y,z) { 0 }
+//          .link_z_rot_fn(N,x,y,z) { mod(N,2)*90 }
+//
+//      N - is the link number within the full chain layout
+//      x,y,z is the position of the back location of the link
+//
+#declare Chain_layout_default_link_z_offset_fn  = function(N,x,y,z) { 0 }
+#declare Chain_layout_default_link_z_rot_fn     = function(N,x,y,z) { mod(N,2) * 90 }
+#macro Chain_layout_options_create(optional LinkSpecSelectFn, optional LinkOffsetFn, optional LinkRotFn)
+    #local _options = dictionary {
+        #ifdef(LinkSpecSelectFn)
+        .link_spec_select_fn:   LinkSpecSelectFn,
+        #end
+        .link_z_offset_fn:  #ifdef(LinkOffsetFn) LinkOffsetFn, #else Chain_layout_default_link_z_offset_fn, #end
+        .link_z_rot_fn:     #ifdef(LinkRotFn) LinkRotFn, #else Chain_layout_default_link_z_rot_fn, #end
+    }
+    ;
+    
+    _options
+#end
+
+// End Chain_layout_options_create
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Chain_layout_select_link_spec(ChainLayout,LinkNumber,BackPos,optional Options)
+//
+#macro Chain_layout_select_link_spec(ChainLayout,LinkNumber,BackPos,optional Options)
+    #local _options = #ifdef(Options) Options; #else ChainLayout.default_options; #end
+    
+    #if (ChainLayout.chain_spec.link_spec_count = 1)
+        #local _link_spec   = ChainLayout.chain_spec.link_specs[0];
+    #else
+        #ifdef (_options.link_spec_select_fn)
+            #local _link_spec_n = _options.link_spec_select_fn(LinkNumber,BackPos.x,BackPos.y,BackPos.z);
+        #else                                                                                            
+            #local _link_spec_n = mod(LinkNumber,ChainLayout.chain_spec.link_spec_count);
+        #end                                                                             
+        #local _link_spec   = ChainLayout.chain_spec.link_specs[_link_spec_n];
+    #end                                                         
+    
+    _link_spec
+#end
+
+// End Chain_layout_select_link_spec
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Chain_layout_select_link_rot(ChainLayout,LinkNumber,BackPos,optional Options)
+//
+#macro Chain_layout_select_link_rot(ChainLayout,LinkNumber,BackPos,optional Options)
+    #local _options = #ifdef(Options) Options; #else ChainLayout.default_options; #end
+    
+    #local _z_rot   = _options.link_z_rot_fn(LinkNumber,BackPos.x,BackPos.y,BackPos.z);
+    
+    _z_rot
+#end
+
+// End Chain_layout_select_link_rot
+//-----------------------------------------------------------------------------
+ 
+//-----------------------------------------------------------------------------
+// Chain_layout_select_link_offset(ChainLayout,LinkNumber,BackPos,optional Options)
+//
+#macro Chain_layout_select_link_offset(ChainLayout,LinkNumber,BackPos,optional Options)
+    #local _options = #ifdef(Options) Options; #else ChainLayout.default_options; #end
+    
+    #local _z_offset   = _options.link_z_offset_fn(LinkNumber,BackPos.x,BackPos.y,BackPos.z);
+    
+    _z_offset
+#end
+
+// End Chain_layout_select_link_offset
+//-----------------------------------------------------------------------------
+ 
+//-----------------------------------------------------------------------------
+// Chain_layout_create(ChainSpec,optional ChainStartLoc, optional DefaultOptions)
 //
 //      Creates a dictionary{} containing:
 //      .chain_spec:    ChainSpec,
 //      .link_rot_fn:   LinkRotFn (optional)
 //      .num_links:     0,
-//      .links:         array // will contain instances of Chain_link_layout_create() in order
+//      .links:         array // will contain instances of Chain_layout_link_create() in order
 //
-#macro Chain_layout_create(ChainSpec,optional LinkRotFn)
+#macro Chain_layout_create(ChainSpec,optional ChainStartLoc, optional DefaultOptions)
+    #local _chain_loc   = #ifdef(ChainStartLoc) ChainStartLoc; #else <0,0,0>; #end
     #local _layout  = dictionary {
         .chain_spec:    ChainSpec,
-        #ifdef (LinkRotFn)
-        .link_rot_fn:   LinkRotFn,
-        #end
+        .chain_loc:     _chain_loc,
+        .default_options:   #ifdef(DefaultOptions) DefaultOptions, #else Chain_layout_options_create(,,), #end
         .num_links:     0,
         .links:         array
     }
@@ -294,195 +383,17 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Chain_layout_create_link_obj(ChainLayout,LinkNum,BackLoc,FrontLoc)
-//
-//      This function can be used to create a link object{} using the Chain_spec
-//  associated with this Chain_layout to select the appropriate link spec,
-//  and then using that link spec to create the object.
-// 
-#macro Chain_layout_create_link_obj(ChainLayout,LinkNum,BackLoc,FrontLoc)
-    #local _link_spec   = Chain_spec_select_link_spec(ChainLayout.chain_spec,LinkNum);
-    
-    #ifdef(Chain_link_obj_create)
-        #local _link_obj    = object { Chain_link_obj_create(_link_spec,LinkNum,BackLoc,FrontLoc) }
-    #else
-        #ifndef(_link_spec.link_obj)
-            #error concat("Chain_layout_create_link_obj: Chain_link_spec ", _link_spec.link_name, " does not have a link_obj and no Chain_link_obj_create macro is defined\n")
-        #end
-        #local _link_obj    = object { _link_spec.link_obj }
-    #end                                                    
-    
-    _link_obj
-#end
-
-// End Chain_layout_create_link_obj
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-// Chain_layout_add_link_auto(ChainLayout,BackLoc,FrontLoc,optional LinkRotFn)
-//
-#macro Chain_layout_add_link_auto(ChainLayout,BackLoc,FrontLoc,optional LinkRotFn)
-    #local _link_rot    =
-    #ifdef (LinkRotFn)
-        LinkRotFn(ChainLayout.num_links,BackLoc.x,BackLoc.y,BackLoc.z);
-    #else
-        #ifdef (ChainLayout.link_rot_fn)
-            ChainLayout.link_rot_fn(ChainLayout.num_links,BackLoc.x,BackLoc.y,BackLoc.z);
-        #else   
-            90*mod(ChainLayout.num_links,2);
-        #end
-    #end
-     
-    #ifdef (Chain_layout_verbose) #debug concat("_link_rot=", str(_link_rot, 0, 3), "\n") #end
-    #ifdef (Chain_layout_verbose) #debug concat("vlength(FrontLoc-BackLoc)=", str(vlength(FrontLoc - BackLoc), 0, 3), "\n") #end
-    
-    #local _link_layout = Chain_link_layout_create(Chain_layout_create_link_obj(ChainLayout,ChainLayout.num_links,BackLoc,FrontLoc),_link_rot,BackLoc,FrontLoc);
-    Chain_layout_add_link(ChainLayout,_link_layout)
-#end
-
-// End Chain_layout_add_link_auto
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-// Chain_layout_add_segment(ChainLayout,EndPoint,optional LinkOffsetFn, optional LinkRotFn)
-//
-//      Adds links to the current chain, starting either at <0,0,0> or the end
-//      of the last link in the chain in a straight line towards EndPoint until
-//      the front end of the last link added is beyond that EndPoint.
-//
-#macro Chain_layout_add_segment(ChainLayout,EndPoint, optional LinkOffsetFn, optional LinkRotFn)
-    #if (ChainLayout.num_links = 0)
-        #local _back_loc    = <0,0,0>;
-    #else
-        #local _back_loc    = ChainLayout.links[ChainLayout.num_links-1].link_front;
-    #end
-    #ifdef (LinkOffsetFn)
-        #local _back_loc    = _back_loc + <0, 0, LinkOffsetFn(ChainLayout.num_links, _back_loc.x, _back_loc.y, _back_loc.z)>;
-    #end    
-    
-    #local _segment_dir = vnormalize(EndPoint - _back_loc);
-    #debug concat("_segment_dir=<", vstr(3, _segment_dir, ",", 0, 3), ">\n")
-    #local _segment_len = vlength(EndPoint - _back_loc);
-    #local _cur_len     = 0;
-    #while (_cur_len < _segment_len)
-        #local _link_spec   = Chain_spec_select_link_spec(ChainLayout.chain_spec,ChainLayout.num_links);
-        #local _link_len    = _link_spec.link_inner.y;
-        #local _front_loc   = _back_loc + _segment_dir*_link_len;
-        Chain_layout_add_link_auto(ChainLayout,_back_loc,_front_loc,LinkRotFn)
-        #local _back_loc    = _front_loc;
-        #local _cur_len     = _cur_len + _link_len;
-    #end
-            
-#end
-
-// End Chain_layout_add_segment
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-// Chain_layout_add_spline_segment(ChainLayout,Spline,Length,optional LinkOffsetFn, optional LinkRotFn)
-//
-//  Adds a length of chain beginning at <0,0,0> or the link_front of the last
-//  link currently in the chain that follows the given Spline for the given
-//  length.  Links are selected automatically fro the set of link specs in
-//  the chain.  This function does not allow for lax chains.
-//
-//  The Spline should be defined such that the values reflect the distance
-//  from the last point in the chain to each link.  Use libspline.inc: Spline_create_distance_spline
-//  to get accurate distance values in your spline.
-//
-//  Spline(0) should be the link_back of the first new link, which is also
-//  the link_front of the last link in the layout or <0,0,0>.
-//
-//  Spline(Length) will represent the link_front of the last new link added to
-//  the layout,
-// 
-#macro Chain_layout_add_spline_segment(ChainLayout,Spline,Length,optional LinkOffsetFn, optional LinkRotFn)
-    #if (ChainLayout.num_links = 0)
-        #local _back_loc    = <0,0,0>;
-    #else
-        #local _back_loc    = ChainLayout.links[ChainLayout.num_links-1].link_front;
-    #end
-    #ifdef (LinkOffsetFn)
-        #local _back_loc    = _back_loc + <0, 0, LinkOffsetFn(ChainLayout.num_links, _back_loc.x, _back_loc.y, _back_loc.z)>;
-    #end    
-    
-    #local _cur_len = 0;
-    #while (_cur_len < Length)
-        #local _link_spec   = Chain_spec_select_link_spec(ChainLayout.chain_spec,ChainLayout.num_links);
-        #local _link_len    = _link_spec.link_inner.y;
-        #local _front_loc   = Spline(_cur_len + _link_len);
-        Chain_layout_add_link_auto(ChainLayout,_back_loc,_front_loc,LinkRotFn)
-        #local _back_loc    = _front_loc;
-        #local _cur_len     = _cur_len + _link_len;        
-    #end
-    
-#end
-
-// End Chain_layout_add_spline_segment
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-// Chain_layout_add_coil_segment(ChainLayout,CoilAxis,CoilPt,Revolutions,optional Offset,optional OffsetAbsolute, optional LinkRotFn)
-//
-//      Given a 3D CoilAxis vector and a CoilPt on that axis (defines the translation from <0,0,0>),
-//  and a number of full and fractional revolutions around that axis, this function will add
-//  links to the chain that revolve around that axis at a radius defined by the front of
-//  the last chain link in the layout.  The chain will coil by the given Offset from the starting
-//  perpendicular point of the axis, (default is the width of the chain link).
-//
-#macro Chain_layout_add_coil_segment(ChainLayout,CoilAxis,CoilPt,Revolutions,optional Offset,optional OffsetAbsolute, optional LinkRotFn)
-    // Compute the perpendicular point on CoilAxis from the front of the last link
-    // in the current chain, (or <0,0,0> if there are no links) translated by CoilPt
-    //
-    #local _offset_abs  = #ifdef(OffsetAbsolute) OffsetAbsolute; #else false; #end
-    #local _coil_axis   = vnormalize(CoilAxis);
-    
-    #if (ChainLayout.num_links = 0)
-        #local _back_loc   = <0,0,0>;
-    #else
-        #local _back_loc   = ChainLayout.links[ChainLayout.num_links-1].link_front;
-    #end
-    
-    #local _coil_perpendicular_pt   = CoilPt + VProject_Axis(_back_loc - CoilPt, _coil_axis);
-    #local _coil_radius             = vlength(_coil_perpendicular_pt - _back_loc);
-    
-    #local _max_rot                 = 360*Revolutions;
-    #local _cur_rot                 = 0;
-    #while (_cur_rot <= _max_rot)
-        #local _link_spec   = Chain_spec_select_link_spec(ChainLayout.chain_spec,ChainLayout.num_links);
-        #local _link_len    = _link_spec.link_inner.y;
-        #local _link_arc    = degrees(_link_len/_coil_radius);
-        #local _link_arc    = degrees(ChordRadius2Arc(_link_len,_coil_radius));
-        #if (_offset_abs)
-            #local _link_offset = #ifdef(Offset) Offset; #else _link_spec.link_size.x; #end
-        #else
-            #local _link_offset = #ifdef(Offset) Offset*_link_spec.link_size.x; #else _link_spec.link_size.x; #end
-        #end    
-        
-        #local _front_loc   = CoilPt + _coil_axis*_link_offset*_link_arc/360 + vaxis_rotate(_back_loc - CoilPt, _coil_axis, _link_arc);
-        #debug concat("_back_loc=<", vstr(3, _back_loc, ",", 0, 2), ">; _front_loc=<", vstr(3, _front_loc, ",", 0, 2), ">\n")
-        Chain_layout_add_link_auto(ChainLayout,_back_loc,_front_loc,LinkRotFn)
-        #local _back_loc    = _front_loc;
-        #local _cur_rot     = _cur_rot + _link_arc;
-    #end
-        
-#end
-
-// End Chain_layout_add_coil_segment
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
 // Chain_layout_render(ChainLayout)
 //
 #macro Chain_layout_render(ChainLayout)
     #if (ChainLayout.num_links = 0)
         #error concat("Chain_layout_render: No links in the chain layout\n")
     #elseif (ChainLayout.num_links = 1)
-        #local _chain   = object { Chain_link_layout_render(ChainLayout.links[0]) }
+        #local _chain   = object { Chain_layout_link_render(ChainLayout.links[0],0) }
     #else
         #local _chain   = union {
             #for (i, 0, ChainLayout.num_links-1, 1)
-            object { Chain_link_layout_render(ChainLayout.links[i]) }
+            object { Chain_layout_link_render(ChainLayout.links[i],i) }
             #end
         }
     #end
@@ -494,6 +405,213 @@
 //-----------------------------------------------------------------------------
 
 // End Chain Layout Macros
+//=============================================================================
+
+//=============================================================================
+// Chain Layout Construction Macros
+
+//-----------------------------------------------------------------------------
+// Chain_layout_add_link_to_end(ChainLayout,LinkOrientation,optional Options,optional LinkSpec, optional LinkObj)
+//
+//      This macro creates a new Chain_layout_link dictionary object that
+//      is located at the current end of the chain and is pointing in the
+//      given LinkOrientation.
+//
+//      If LinkSpec is not defined, it is determined using the link spec
+//      selection function defined in Options, or ChainLayout.default_options,
+//      or the final default of iterating over them with successive links
+//
+//      The back location for the new link is the front loc of the last link,
+//      or the chain position if no links have been created yet.  The offset
+//      from that back location is calculated using Options.link_z_offset_fn
+//      or ChainLayout.default_options.link_z_offset_fn.
+//
+//      The Z rotation of the link is calculated using Options.link_z_rot_fn
+//      or ChainLayout.default_options.link_z_rot_fn.
+//
+//      The resulting ChainLink object is created using Chain_layout_link_create_oriented
+//      with the selected LinkSpec, back location, Z rotation, and LinkOrientation.
+//
+//      If LinkObj is supplied, it is used as well, otherwise it will default
+//      using the rules defined in Chain_layout_link_create_oriented.
+//
+#macro Chain_layout_add_link_to_end(ChainLayout,LinkOrientation,optional Options, optional LinkSpec, optional LinkObj)
+    #local _link_num    = ChainLayout.num_links;
+    #local _last_loc    = #if (ChainLayout.num_links = 0) ChainLayout.chain_loc; #else ChainLayout.links[ChainLayout.num_links-1].link_front; #end
+    #local _link_spec   = #ifdef(LinkSpec) LinkSpec; #else Chain_layout_select_link_spec(ChainLayout,_link_num,_last_loc,Options); #end
+    #local _link_offset = Chain_layout_select_link_offset(ChainLayout,_link_num,_last_loc,Options);
+    #local _link_rot    = Chain_layout_select_link_rot(ChainLayout,_link_num,_last_loc,Options);
+    
+    #if (_link_offset = 0)
+        #local _back_loc    = _last_loc;
+    #else
+        #if (ChainLayout.num_links = 0)
+            #local _offset_dir  = z;
+        #else
+            #local _offset_dir  = vnormalize(_last_loc - ChainLayout.links[ChainLayout.num_links-1].link_back);
+        #end
+        #local _back_loc    = _last_loc + _offset_dir*_link_offset;    
+    #end
+    
+    #local _link    = Chain_layout_link_create_oriented(_link_spec, LinkObj, _link_rot, _back_loc, LinkOrientation);
+    Chain_layout_add_link(ChainLayout,_link)
+#end      
+
+// End Chain_layout_add_link_to_end
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Chain_layout_add_segment(ChainLayout,EndPoint,optional Options)
+//
+//      This macro adds links to the given ChainLayout pointing towards EndPoint
+//  such that the back location of the last link added precedes the EndPoint,
+//  and the front location is at or beyond it.  To determine where the actual
+//  end of the chain is located, check ChainLayout.links[ChainLayout.num_links-1]
+//
+//  The LinkSpec is selected using the link spec selection function in Options
+//  or ChainLayout.default_options.  The LinkObject will be created using Chain_layout_link_obj_create
+//  or the default object in the selected LinkSpec.
+//
+//  The LinkOrientation is the direction from the current endpoint (or chain_loc)
+//  of the ChainLayout to the EndPoint.
+//
+#macro Chain_layout_add_segment(ChainLayout,EndPoint,optional Options)
+    #local _last_loc    = #if (ChainLayout.num_links = 0) ChainLayout.chain_loc; #else ChainLayout.links[ChainLayout.num_links-1].link_front; #end
+    
+    #local _orientation = vnormalize(EndPoint - _last_loc);
+    #local _length      = vlength(EndPoint - _last_loc);
+    #local _cur_length  = 0;
+    
+    #while (_cur_length < _length)
+        Chain_layout_add_link_to_end(ChainLayout,_orientation,Options,,)
+        #local _cur_length  = vlength(ChainLayout.links[ChainLayout.num_links-1].link_front - _last_loc);
+    #end
+    
+#end
+
+// End Chain_layout_add_segment
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Chain_layout_add_spline_segment(ChainLayout,Spline,Length,optional Options)
+//
+//  This macro adds links to the given ChainLayout, finding the front location
+//  by querying the given Spline at a distance reflecting the links position
+//  in the spline segment and its internal length.  The spline should be defined
+//  to return the last position in the current chain at distance 0.
+//
+//  The LinkSpec is selected using the link spec selection function in Options
+//  or ChainLayout.default_options.  The LinkObject will be created using Chain_layout_link_obj_create
+//  or the default object in the selected LinkSpec.
+//
+#macro Chain_layout_add_spline_segment(ChainLayout,Spline,Length,optional Options)
+    #local _last_loc    = #if (ChainLayout.num_links = 0) ChainLayout.chain_loc; #else ChainLayout.links[ChainLayout.num_links-1].link_front; #end
+    
+    #local _cur_len     = 0;
+    
+    #while (_cur_len < Length)
+        #local _link_spec   = Chain_layout_select_link_spec(ChainLayout,ChainLayout.num_links,_last_loc,Options);
+        #local _cur_len     = _cur_len + _link_spec.link_inner.y;
+        #local _front_loc   = Spline(_cur_len);
+        #local _orientation = vnormalize(_front_loc - _last_loc);
+        
+        Chain_layout_add_link_to_end(ChainLayout,_orientation,Options,,)
+        
+        #local _last_loc    = ChainLayout.links[ChainLayout.num_links-1].link_front;
+    #end
+#end
+
+// End Chain_layout_add_spline_segment
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Chain_layout_add_slack_segment(ChainLayout,EndPt,SlackLength,optional Options)
+//
+#macro Chain_layout_add_slack_segment(ChainLayout,EndPt,SlackLength,optional Options)
+    // Create a quadratic spline between the front of the lat link in the chain layout and the EndPt,
+    // with an estimated sag point in the middle to cause the length of the chain to be SlackLength.
+    //
+    #local _pt0             = #if (ChainLayout.num_links = 0) ChainLayout.chain_loc; #else ChainLayout.links[ChainLayout.num_links-1].link_front; #end
+    #local _pt0_sdist       = 0;
+    
+    #local _pt0_end         = EndPt - _pt0;
+    #local _pt0_end_dist    = vlength(_pt0_end);
+    
+    #local _slack_len       = max(SlackLength,_pt0_end_dist);
+    #local _slack_a         = _slack_len/2;
+    #local _slack_h         = vlength(_pt0_end*<1,0,1>);
+    #local _slack_v         = 1.1*sqrt(_slack_a*_slack_a - _slack_h*_slack_h/4);    // 1.1 mult accounts for curvature
+    
+    #if (_pt0.y < EndPt.y)
+    #local _mid             = EndPt.y - _pt0_end/4;
+    #else                                          
+    #local _mid             = _pt0 + _pt0_end/4;
+    #end
+    #local _ptmid           = _mid - <0, (_slack_v - abs(_pt0_end.y))/2, 0>;
+    #local _ptmid_dist      = vlength(_ptmid - _pt0); 
+    
+    // Use the a distance adjusted version of the spline to add a spline segment of SlackLength to the
+    // chain
+    //
+    #ifdef(Chain_layout_verbose)
+        #debug concat("Chain_layout_add_slack_segment:\n")
+        #debug concat("   ", str(_pt0_sdist, 0, 3), ", <", vstr(3, _pt0, ",", 0, 3), ">\n")
+        #debug concat("   ", str(_ptmid_dist, 0, 3), ", <", vstr(3, _ptmid, ",", 0, 3), ">\n")
+        #debug concat("   ", str(_slack_len, 0, 3), ", <", vstr(3, EndPt, ",", 0, 3), ">\n")
+    #end
+    #local _spline  = spline {
+        quadratic_spline
+        _pt0_sdist, _pt0,
+        _ptmid_dist, _ptmid,
+        _slack_len, EndPt
+    }
+    #local _dspline_len = 0;
+    #local _dspline     = Spline_create_distance_spline(_spline,"quadratic_spline",0.0,_slack_len+1,0.05,,,,_dspline_len)
+    
+    Chain_layout_add_spline_segment(ChainLayout,_dspline,_dspline_len,Options)
+#end
+
+// End Chain_layout_add_slack_segment
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Chain_layout_add_coil_segment(ChainLayout,CoilAxis,CoilPt,Revolutions,optional Offset, optional Options)
+//
+//  Offset is a signed multiple of the width of a chain link.  If abs(Offset) < 1.0 and Revolutions > 1.0
+//  you will get overlaps of links.
+//
+#macro Chain_layout_add_coil_segment(ChainLayout,CoilAxis,CoilPt,Revolutions,optional Offset, optional Options)
+    #local _offset_mult             = #ifdef(Offset) Offset; #else 1.0; #end
+    #local _back_loc                = #if (ChainLayout.num_links = 0) ChainLayout.chain_loc; #else ChainLayout.links[ChainLayout.num_links-1].link_front; #end
+    
+    #local _coil_axis               = vnormalize(CoilAxis);
+    #local _coil_perpendicular_pt   = CoilPt + VProject_Axis(_back_loc - CoilPt, _coil_axis);
+    #local _coil_radius             = vlength(_coil_perpendicular_pt - _back_loc);
+    
+    #local _max_rot                 = 360*Revolutions;
+    #local _cur_rot                 = 0;
+    #while (_cur_rot <= _max_rot)
+        #local _link_spec   = Chain_layout_select_link_spec(ChainLayout,ChainLayout.num_links,_back_loc,Options);
+        #local _link_len    = _link_spec.link_inner.y;
+        #local _link_arc    = degrees(_link_len/_coil_radius);
+        #local _link_arc    = degrees(ChordRadius2Arc(_link_len,_coil_radius));
+        #local _link_offset = _offset_mult * _link_spec.link_size.x;
+        
+        #local _front_loc   = CoilPt + _coil_axis*_link_offset*_link_arc/360 + vaxis_rotate(_back_loc - CoilPt, _coil_axis, _link_arc);
+        #local _orientation = vnormalize(_front_loc - _back_loc);
+        #ifdef (Chain_layout_verbose) #debug concat("Chain_layout_add_coil_segment: _back_loc=<", vstr(3, _back_loc, ",", 0, 2), ">; _front_loc=<", vstr(3, _front_loc, ",", 0, 2), ">\n") #end
+        Chain_layout_add_link_to_end(ChainLayout,_orientation,Options,,)
+        
+        #local _back_loc    = _front_loc;
+        #local _cur_rot     = _cur_rot + _link_arc;
+    #end
+        
+#end
+
+// End Chain_layout_add_coil_segment
+//-----------------------------------------------------------------------------
+
+// End Chain Layout Construction Macros
 //=============================================================================
 
 #version Libchain_Inc_Temp;

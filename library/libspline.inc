@@ -80,9 +80,9 @@
 //=============================================================================
 
 //=============================================================================
-// Spline_create_distance_spline(Spline,TypeString,MinValue,MaxValue,Epsilon,optional NegValue, optional NegPoint, optional EndPoint)
+// Spline_create_distance_spline(Spline,TypeString,MinValue,MaxValue,Epsilon,optional NegValue, optional NegPoint, optional EndPoint, optional DistRet)
 //
-#macro Spline_create_distance_spline(Spline,TypeString,MinValue,MaxValue,Epsilon,optional NegValue, optional NegPoint, optional EndPoint)
+#macro Spline_create_distance_spline(Spline,TypeString,MinValue,MaxValue,Epsilon,optional NegValue, optional NegPoint, optional EndPoint, optional DistRet)
 
     spline {
         Spline_type_from_string(TypeString)
@@ -107,6 +107,9 @@
         #end
     }
     
+    #ifdef (DistRet)
+        #declare DistRet    = _d;
+    #end    
     #debug concat("Spline_create_distance_spline: total distance = ", str(_d, 0, 6), "\n")
 #end
 
