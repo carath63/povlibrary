@@ -511,7 +511,8 @@
     
     #while (_cur_len < Length)
         #local _link_spec   = Chain_layout_select_link_spec(ChainLayout,ChainLayout.num_links,_last_loc,Options);
-        #local _cur_len     = _cur_len + _link_spec.link_inner.y;
+        #local _link_offset = Chain_layout_select_link_offset(ChainLayout,ChainLayout.num_links,_last_loc,Options);
+        #local _cur_len     = _cur_len + _link_spec.link_inner.y + _link_offset;
         #local _front_loc   = Spline(_cur_len);
         #local _orientation = vnormalize(_front_loc - _last_loc);
         
@@ -572,6 +573,117 @@
 #end
 
 // End Chain_layout_add_slack_segment
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Chain_layout_add_catenary_segment(ChainLayout,EndPt,optional CatenaryA, optional Options)
+//
+//  Parts of this are borrowed from the RopeSys (rope_sys.inc) implementation
+//  of a catenary and adapted for use with chain links.
+//
+#macro Chain_layout_compute_catenary_a(Length,Distance,Tolerance)
+    #local _cur_a       = 1.0;
+    #local _cur_delta   = 2*Tolerance;
+    
+    #while (abs(_cur_delta) > Tolerance)
+        #local _cur_L       = 2*_cur_a*sinh(Distance/(2*_cur_a));
+        #local _cur_delta   = Length - _cur_L;
+        #if (abs(_cur_delta) > Tolerance)
+            #if (_cur_delta < 0)
+                #local _cur_a   = 1.5*_cur_a;
+            #else                            
+                #local _cur_a   = _cur_a/2;
+            #end
+        #end
+    #end
+    
+    _cur_a
+    
+#end
+
+#macro Chain_layout_add_catenary_segment(ChainLayout,EndPt,optional CatenaryA, optional Options)
+    #local _catenary_a  = #ifdef(CatenaryA) CatenaryA; #else 1.0; #end
+    #local _verbose     = #ifdef(Chain_layout_verbose) Chain_layout_verbose; #else 0; #end
+    
+    #local _start_pos       = #if(ChainLayout.num_links = 0) ChainLayout.chain_loc; #else ChainLayout.links[ChainLayout.num_links-1].front_loc; #end
+    #local _start_hproj     = _start_pos*<1,0,1>;
+    #local _segment_disp    = EndPt - _start_pos;
+    #local _horizontal_disp = vlength(_segment_disp*<1,0,1>);
+    #local _vertical_disp   = abs(_segment_disp.y);
+    #local _horizontal_dir  = vnormalize(_segment_disp*<1,0,1>);
+    
+    // See rope_sys.inc: Rope_Catenary for an explanation of the iterative method
+    // for determining the best fit along a catenary with the computed characteristics
+    // between _start_pos and EndPt.
+    //
+    #local _chain_x         = 0;
+    #local _chain_y         = _catenary_a*(cosh((_chain_x+_horizontal_disp)/_catenary_a)-cosh(_chain_x/_catenary_a));
+    #if (_verbose > 1) #debug concat("Chain_layout_add_catenary_segment: _chain_x=", str(_chain_x, 0, 3), "; _chain_y=", str(_chain_y, 0, 3), "\n") #end    
+    #local _chain_dir       = 1;
+    #if (_chain_y > _vertical_disp) #local _chain_dir = -_chain_dir; #end
+    #local _chain_accuracy  = 0.001;
+    #local _chain_delta     = _horizontal_disp/10;
+    
+    #while (abs(_chain_y - _vertical_disp) > _chain_accuracy)
+        #local _chain_x = _chain_x + _chain_delta*_chain_dir;
+        #local _chain_y = _catenary_a*(cosh((_chain_x+_horizontal_disp)/_catenary_a)-cosh(_chain_x/_catenary_a));
+        #if (_verbose > 1) #debug concat("Chain_layout_add_catenary_segment: _chain_x=", str(_chain_x, 0, 3), "; _chain_y=", str(_chain_y, 0, 3), "\n") #end    
+        #if ((_chain_y > _vertical_disp & _chain_dir>0) | (_chain_y<_vertical_disp & _chain_dir < 0))
+            #local _chain_dir   = -_chain_dir;
+            #local _chain_delta = _chain_delta/10;
+        #end
+    #end
+    
+    
+    // Traverse the horizontal line between the two points by the internal length of each link in sequence
+    // and find the catenary point, then adjust to ensure the new point is exactly the internal length
+    // of the link and project the resulting point back up onto the horizontal line to compute the next point.
+    //
+    #if (_start_pos.y > EndPt.y)
+        #local _chain_x = -(_horizontal_disp+_chain_x);
+    #end
+    #local _chain_y = _catenary_a*(cosh(_chain_x/_catenary_a)-1);
+    #local _last_loc    = _start_pos;
+
+    #if (_verbose)
+        #debug concat("Chain_layout_add_catenary_segment: _chain_x=", str(_chain_x, 0, 3), "; _chain_y=", str(_chain_y, 0, 3), "\n")
+    #end    
+    
+    #local _chain_xdisp = 0;
+    #local _links_added = 0;
+    #while (_chain_xdisp < _horizontal_disp)
+        #local _link_spec   = Chain_layout_select_link_spec(ChainLayout,ChainLayout.num_links,_last_loc,Options);
+        #local _link_offset = Chain_layout_select_link_offset(ChainLayout,ChainLayout.num_links,_last_loc,Options);
+        
+        #local _link_xdisp  = _chain_xdisp+_link_spec.link_inner.y + _link_offset;
+        #local _link_yval   = _catenary_a*(cosh((_chain_x+_link_xdisp)/_catenary_a)-1);
+        #local _link_ydisp  = _link_yval-_chain_y;
+        #local _link_front  = _start_pos + _horizontal_dir*_link_xdisp + y*_link_ydisp;
+        #local _link_dir    = vnormalize(_link_front - _last_loc);
+        
+        // If we really wanted to be fancy, we could do some iterative recalculation over _chain_xdisp
+        // values until we got close enough to the _link_length matching the internal length of the
+        // selected link spec.  For now, I won't bother.
+        //
+        #if (_verbose > 1)
+            #debug concat("Chain_layout_add_catenary_segment: disp: ", str(_chain_xdisp,0,3), " link_back=<", vstr(3,_last_loc,",", 0, 3), ">; link_dir=<", vstr(3, _link_dir, ",", 0, 3), ">\n")
+        #end
+        Chain_layout_add_link_to_end(ChainLayout,_link_dir,Options,,)
+        #local _links_added = _links_added + 1;
+        
+        // See where the link actually ended
+        //
+        #local _last_loc    = ChainLayout.links[ChainLayout.num_links-1].link_front;
+        #local _last_hproj  = _last_loc*<1,0,1>;
+        #local _chain_xdisp = vlength(_last_hproj - _start_hproj);
+        
+    #end
+    
+    #if (_verbose) #debug concat("Chain_layout_add_catenary_segment: added ", str(_links_added, 0, 0), " links.\n") #end    
+
+#end
+
+// End Chain_layout_add_catenary_segment
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
