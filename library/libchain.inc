@@ -29,6 +29,7 @@
 // My Includes
 //
 #include "libgeom.inc"
+#include "libspline.inc"
 
 // End My Includes
 //-----------------------------------------------------------------------------
@@ -182,9 +183,9 @@
 //
 #macro Chain_layout_link_create_oriented(LinkSpec, optional LinkObj, LinkRot, BackLoc, Orientation)
     #local _front_trans = Reorient_Trans(z, Orientation)
-    #local _front_loc   = BackLoc + vtransform(<0, 0, LinkSpec.link_inner.y>, _front_trans);
+    #local _link_front   = BackLoc + vtransform(<0, 0, LinkSpec.link_inner.y>, _front_trans);
     
-    Chain_layout_link_create(LinkSpec, LinkObj, LinkRot, BackLoc, _front_loc)
+    Chain_layout_link_create(LinkSpec, LinkObj, LinkRot, BackLoc, _link_front)
 #end
 
 // End Chain_layout_link_create_oriented
@@ -261,10 +262,27 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Chain_layout_options_create(optional LinkSpecSelectFn, optional LinkOffsetFn, optional LinkRotFn)
+// Chain_layout_link_dump(Prefix,LinkLayout)
+//
+#macro Chain_layout_link_dump(Prefix,LinkLayout)
+    #debug concat(
+        Prefix,
+        ".link_back=<", vstr(3, LinkLayout.link_back, ",", 0, 3), "> ",
+        ".link_front=<", vstr(3, LinkLayout.link_front, ",", 0, 3), "> ",
+        ".link_rot=", str(LinkLayout.link_rot, 0, 3), "\n"
+    )
+#end
+
+// End Chain_layout_link_dump
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Chain_layout_options_create(optional LinkSpecSelectFn, optional LinkXOffsetFn, optional LinkYOffsetFn, optional LinkZOffsetFn, optional LinkRotFn)
 //
 //      Creates a dictionary{} consisting of:
 //          .link_spec_select_fn(N,x,y,z)
+//          .link_x_offset_fn(N,x,y,z)
+//          .link_y_offset_fn(N,x,y,z)
 //          .link_z_offset_fn(N,x,y,z)
 //          .link_z_rot_fn(N,x,y,z)
 //
@@ -276,14 +294,19 @@
 //      N - is the link number within the full chain layout
 //      x,y,z is the position of the back location of the link
 //
+//
+#declare Chain_layout_default_link_x_offset_fn  = function(N,x,y,z) { 0 }
+#declare Chain_layout_default_link_y_offset_fn  = function(N,x,y,z) { 0 }
 #declare Chain_layout_default_link_z_offset_fn  = function(N,x,y,z) { 0 }
 #declare Chain_layout_default_link_z_rot_fn     = function(N,x,y,z) { mod(N,2) * 90 }
-#macro Chain_layout_options_create(optional LinkSpecSelectFn, optional LinkOffsetFn, optional LinkRotFn)
+#macro Chain_layout_options_create(optional LinkSpecSelectFn, optional LinkXOffsetFn, optional LinkYOffsetFn, optional LinkZOffsetFn, optional LinkRotFn)
     #local _options = dictionary {
         #ifdef(LinkSpecSelectFn)
         .link_spec_select_fn:   LinkSpecSelectFn,
         #end
-        .link_z_offset_fn:  #ifdef(LinkOffsetFn) LinkOffsetFn, #else Chain_layout_default_link_z_offset_fn, #end
+        .link_x_offset_fn:  #ifdef(LinkXOffsetFn) LinkXOffsetFn, #else Chain_layout_default_link_x_offset_fn, #end
+        .link_y_offset_fn:  #ifdef(LinkYOffsetFn) LinkYOffsetFn, #else Chain_layout_default_link_y_offset_fn, #end
+        .link_z_offset_fn:  #ifdef(LinkZOffsetFn) LinkZOffsetFn, #else Chain_layout_default_link_z_offset_fn, #end
         .link_z_rot_fn:     #ifdef(LinkRotFn) LinkRotFn, #else Chain_layout_default_link_z_rot_fn, #end
     }
     ;
@@ -332,14 +355,60 @@
 //-----------------------------------------------------------------------------
  
 //-----------------------------------------------------------------------------
-// Chain_layout_select_link_offset(ChainLayout,LinkNumber,BackPos,optional Options)
+// Chain_layout_select_link_xoffset(ChainLayout,LinkNumber,BackPos,optional Options)
 //
-#macro Chain_layout_select_link_offset(ChainLayout,LinkNumber,BackPos,optional Options)
+#macro Chain_layout_select_link_xoffset(ChainLayout,LinkNumber,BackPos,optional Options)
+    #local _options = #ifdef(Options) Options; #else ChainLayout.default_options; #end
+    
+    #local _x_offset   = _options.link_x_offset_fn(LinkNumber,BackPos.x,BackPos.y,BackPos.z);
+    
+    _x_offset
+#end
+
+// End Chain_layout_select_link_xoffset
+//-----------------------------------------------------------------------------
+ 
+//-----------------------------------------------------------------------------
+// Chain_layout_select_link_yoffset(ChainLayout,LinkNumber,BackPos,optional Options)
+//
+#macro Chain_layout_select_link_yoffset(ChainLayout,LinkNumber,BackPos,optional Options)
+    #local _options = #ifdef(Options) Options; #else ChainLayout.default_options; #end
+    
+    #local _y_offset   = _options.link_y_offset_fn(LinkNumber,BackPos.x,BackPos.y,BackPos.z);
+    
+    _y_offset
+#end
+
+// End Chain_layout_select_link_yoffset
+//-----------------------------------------------------------------------------
+ 
+//-----------------------------------------------------------------------------
+// Chain_layout_select_link_zoffset(ChainLayout,LinkNumber,BackPos,optional Options)
+//
+#macro Chain_layout_select_link_zoffset(ChainLayout,LinkNumber,BackPos,optional Options)
     #local _options = #ifdef(Options) Options; #else ChainLayout.default_options; #end
     
     #local _z_offset   = _options.link_z_offset_fn(LinkNumber,BackPos.x,BackPos.y,BackPos.z);
     
     _z_offset
+#end
+
+// End Chain_layout_select_link_zoffset
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Chain_layout_select_link_offset(ChainLayout,LinkNumber,BackPos,optional Options)
+//
+#macro Chain_layout_select_link_offset(ChainLayout,LinkNumber,BackPos,optional Options)
+    #local _options = #ifdef(Options) Options; #else ChainLayout.default_options; #end
+    
+    #local _offset  = <
+        _options.link_x_offset_fn(LinkNumber,BackPos.x,BackPos.y,BackPos.z),
+        _options.link_y_offset_fn(LinkNumber,BackPos.x,BackPos.y,BackPos.z),
+        _options.link_z_offset_fn(LinkNumber,BackPos.x,BackPos.y,BackPos.z)
+    >;
+    
+    _offset
 #end
 
 // End Chain_layout_select_link_offset
@@ -359,7 +428,7 @@
     #local _layout  = dictionary {
         .chain_spec:    ChainSpec,
         .chain_loc:     _chain_loc,
-        .default_options:   #ifdef(DefaultOptions) DefaultOptions, #else Chain_layout_options_create(,,), #end
+        .default_options:   #ifdef(DefaultOptions) DefaultOptions, #else Chain_layout_options_create(,,,,), #end
         .num_links:     0,
         .links:         array
     }
@@ -375,6 +444,8 @@
 // Chain_layout_add_link(ChainLayout,LinkLayout)
 //
 #macro Chain_layout_add_link(ChainLayout,LinkLayout)
+    #local _verbose = #ifdef(Chain_layout_verbose) Chain_layout_verbose; #else 0; #end
+    #if(_verbose > 2) Chain_layout_link_dump("Chain_layout_add_link: ", LinkLayout) #end
     #declare ChainLayout.links[ChainLayout.num_links]   = LinkLayout;
     #declare ChainLayout.num_links                      = ChainLayout.num_links+1;
 #end
@@ -411,7 +482,7 @@
 // Chain Layout Construction Macros
 
 //-----------------------------------------------------------------------------
-// Chain_layout_add_link_to_end(ChainLayout,LinkOrientation,optional Options,optional LinkSpec, optional LinkObj)
+// Chain_layout_add_link_to_end(ChainLayout,BackOffset,LinkOrientation,optional Options,optional LinkSpec, optional LinkObj)
 //
 //      This macro creates a new Chain_layout_link dictionary object that
 //      is located at the current end of the chain and is pointing in the
@@ -435,29 +506,51 @@
 //      If LinkObj is supplied, it is used as well, otherwise it will default
 //      using the rules defined in Chain_layout_link_create_oriented.
 //
-#macro Chain_layout_add_link_to_end(ChainLayout,LinkOrientation,optional Options, optional LinkSpec, optional LinkObj)
-    #local _link_num    = ChainLayout.num_links;
-    #local _last_loc    = #if (ChainLayout.num_links = 0) ChainLayout.chain_loc; #else ChainLayout.links[ChainLayout.num_links-1].link_front; #end
-    #local _link_spec   = #ifdef(LinkSpec) LinkSpec; #else Chain_layout_select_link_spec(ChainLayout,_link_num,_last_loc,Options); #end
-    #local _link_offset = Chain_layout_select_link_offset(ChainLayout,_link_num,_last_loc,Options);
-    #local _link_rot    = Chain_layout_select_link_rot(ChainLayout,_link_num,_last_loc,Options);
+#macro Chain_layout_add_link_to_end(ChainLayout,BackOffset,LinkOrientation,optional Options, optional LinkSpec, optional LinkObj)
+    #local _verbose         = #ifdef(Chain_layout_verbose) Chain_layout_verbose; #else 0; #end
+    #local _link_num        = ChainLayout.num_links;
+    #local _last_loc        = #if (ChainLayout.num_links = 0) ChainLayout.chain_loc; #else ChainLayout.links[ChainLayout.num_links-1].link_front; #end
+    #local _back_loc        = _last_loc + BackOffset;
+    #local _link_spec       = #ifdef(LinkSpec) LinkSpec; #else Chain_layout_select_link_spec(ChainLayout,_link_num,_back_loc,Options); #end
+    #local _link_rot        = Chain_layout_select_link_rot(ChainLayout,_link_num,_back_loc,Options);
     
-    #if (_link_offset = 0)
-        #local _back_loc    = _last_loc;
-    #else
-        #if (ChainLayout.num_links = 0)
-            #local _offset_dir  = z;
-        #else
-            #local _offset_dir  = vnormalize(_last_loc - ChainLayout.links[ChainLayout.num_links-1].link_back);
-        #end
-        #local _back_loc    = _last_loc + _offset_dir*_link_offset;    
-    #end
+    #local _link            = Chain_layout_link_create_oriented(_link_spec, LinkObj, _link_rot, _back_loc, LinkOrientation);
     
-    #local _link    = Chain_layout_link_create_oriented(_link_spec, LinkObj, _link_rot, _back_loc, LinkOrientation);
     Chain_layout_add_link(ChainLayout,_link)
 #end      
 
 // End Chain_layout_add_link_to_end
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Chain_layout_compute_abs_offset(Forward,RelOffset)
+//
+#macro Chain_layout_compute_abs_offset(Forward,RelOffset)
+    #local _rel_offset  = <1,1,1>*RelOffset;
+    #if (vlength(vcross(y,Forward)) = 0)
+        #local _right   = x;
+    #else
+        #local _right   = VPerp_To_Plane(y,Forward);
+    #end
+    #local _up          = VPerp_To_Plane(Forward,_right);
+    #local _offset      = _rel_offset.x*_right + _rel_offset.y*_up + _rel_offset.z*Forward;
+    
+    _offset
+#end
+
+// End Chain_layout_compute_abs_offset
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Chain_layout_last_link_orientation(ChainLayout)
+//
+#macro Chain_layout_last_link_orientation(ChainLayout)
+    #local _orientation = #if(ChainLayout.num_links = 0) z; #else vnormalize(ChainLayout.links[ChainLayout.num_links-1].link_front - ChainLayout.links[ChainLayout.num_links-1].link_back); #end
+    
+    _orientation
+#end
+
+// End Chain_layout_last_link_orientation
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
@@ -476,15 +569,30 @@
 //  of the ChainLayout to the EndPoint.
 //
 #macro Chain_layout_add_segment(ChainLayout,EndPoint,optional Options)
-    #local _last_loc    = #if (ChainLayout.num_links = 0) ChainLayout.chain_loc; #else ChainLayout.links[ChainLayout.num_links-1].link_front; #end
+    #local _verbose         = #ifdef(Chain_layout_verbose) Chain_layout_verbose; #else 0; #end
+    #local _link_num        = ChainLayout.num_links;
+    #local _first_loc       = #if (_link_num = 0) ChainLayout.chain_loc; #else ChainLayout.links[_link_num-1].link_front; #end
     
+    #local _orientation     = Chain_layout_last_link_orientation(ChainLayout);
+    #local _rel_offset      = Chain_layout_select_link_offset(ChainLayout,ChainLayout.num_links,_first_loc,Options);
+    #local _offset          = Chain_layout_compute_abs_offset(_orientation,_rel_offset);
+    #local _first_loc       = _first_loc + _offset;
+    #local _last_loc        = _first_loc;
+    
+    // Since the entire segment follows the same orientation vector, we calculate the coordinate system once
+    // and use it to calculate the offset values.
+    //
     #local _orientation = vnormalize(EndPoint - _last_loc);
-    #local _length      = vlength(EndPoint - _last_loc);
+    #local _length      = vlength(EndPoint - _first_loc);
     #local _cur_length  = 0;
     
     #while (_cur_length < _length)
-        Chain_layout_add_link_to_end(ChainLayout,_orientation,Options,,)
-        #local _cur_length  = vlength(ChainLayout.links[ChainLayout.num_links-1].link_front - _last_loc);
+        #local _rel_offset  = Chain_layout_select_link_offset(ChainLayout,ChainLayout.num_links,_last_loc,Options);
+        #local _offset      = Chain_layout_compute_abs_offset(_orientation,_rel_offset);
+        #if (_verbose > 2) #debug concat("Chain_layout_add_segment: _offset=<", vstr(3, _offset, ",", 0, 3), ">\n") #end
+        Chain_layout_add_link_to_end(ChainLayout,_offset,_orientation,Options,,)
+        #local _cur_length  = vlength(ChainLayout.links[ChainLayout.num_links-1].link_front - _first_loc);
+        #local _last_loc    = ChainLayout.links[ChainLayout.num_links-1].link_front;
     #end
     
 #end
@@ -511,12 +619,17 @@
     
     #while (_cur_len < Length)
         #local _link_spec   = Chain_layout_select_link_spec(ChainLayout,ChainLayout.num_links,_last_loc,Options);
-        #local _link_offset = Chain_layout_select_link_offset(ChainLayout,ChainLayout.num_links,_last_loc,Options);
-        #local _cur_len     = _cur_len + _link_spec.link_inner.y + _link_offset;
-        #local _front_loc   = Spline(_cur_len);
-        #local _orientation = vnormalize(_front_loc - _last_loc);
+        #local _rel_offset  = Chain_layout_select_link_offset(ChainLayout,ChainLayout.num_links,_last_loc,Options);
+        #local _last_orient = Chain_layout_last_link_orientation(ChainLayout);
+        #local _offset      = Chain_layout_compute_abs_offset(_last_orient,_rel_offset);
         
-        Chain_layout_add_link_to_end(ChainLayout,_orientation,Options,,)
+        #local _back_loc    = _last_loc + _offset;
+
+        #local _cur_len     = _cur_len + _link_spec.link_inner.y; // + _rel_offset.z;
+        #local _link_front   = Spline(_cur_len) + _offset;
+        #local _orientation = vnormalize(_link_front - _back_loc);
+        
+        Chain_layout_add_link_to_end(ChainLayout,_offset,_orientation,Options,,)
         
         #local _last_loc    = ChainLayout.links[ChainLayout.num_links-1].link_front;
     #end
@@ -568,7 +681,6 @@
     }
     #local _dspline_len = 0;
     #local _dspline     = Spline_create_distance_spline(_spline,"quadratic_spline",0.0,_slack_len+1,0.05,,,,_dspline_len)
-    
     Chain_layout_add_spline_segment(ChainLayout,_dspline,_dspline_len,Options)
 #end
 
@@ -605,7 +717,7 @@
     #local _catenary_a  = #ifdef(CatenaryA) CatenaryA; #else 1.0; #end
     #local _verbose     = #ifdef(Chain_layout_verbose) Chain_layout_verbose; #else 0; #end
     
-    #local _start_pos       = #if(ChainLayout.num_links = 0) ChainLayout.chain_loc; #else ChainLayout.links[ChainLayout.num_links-1].front_loc; #end
+    #local _start_pos       = #if(ChainLayout.num_links = 0) ChainLayout.chain_loc; #else ChainLayout.links[ChainLayout.num_links-1].link_front; #end
     #local _start_hproj     = _start_pos*<1,0,1>;
     #local _segment_disp    = EndPt - _start_pos;
     #local _horizontal_disp = vlength(_segment_disp*<1,0,1>);
@@ -653,12 +765,14 @@
     #local _links_added = 0;
     #while (_chain_xdisp < _horizontal_disp)
         #local _link_spec   = Chain_layout_select_link_spec(ChainLayout,ChainLayout.num_links,_last_loc,Options);
-        #local _link_offset = Chain_layout_select_link_offset(ChainLayout,ChainLayout.num_links,_last_loc,Options);
+        #local _rel_offset  = Chain_layout_select_link_offset(ChainLayout,ChainLayout.num_links,_last_loc,Options);
+        #local _last_orient = Chain_layout_last_link_orientation(ChainLayout);
+        #local _offset      = Chain_layout_compute_abs_offset(_last_orient,_rel_offset);
         
-        #local _link_xdisp  = _chain_xdisp+_link_spec.link_inner.y + _link_offset;
+        #local _link_xdisp  = _chain_xdisp+_link_spec.link_inner.y + _rel_offset.z;
         #local _link_yval   = _catenary_a*(cosh((_chain_x+_link_xdisp)/_catenary_a)-1);
         #local _link_ydisp  = _link_yval-_chain_y;
-        #local _link_front  = _start_pos + _horizontal_dir*_link_xdisp + y*_link_ydisp;
+        #local _link_front  = _start_pos + _horizontal_dir*_link_xdisp + y*_link_ydisp + _offset;
         #local _link_dir    = vnormalize(_link_front - _last_loc);
         
         // If we really wanted to be fancy, we could do some iterative recalculation over _chain_xdisp
@@ -668,7 +782,11 @@
         #if (_verbose > 1)
             #debug concat("Chain_layout_add_catenary_segment: disp: ", str(_chain_xdisp,0,3), " link_back=<", vstr(3,_last_loc,",", 0, 3), ">; link_dir=<", vstr(3, _link_dir, ",", 0, 3), ">\n")
         #end
-        Chain_layout_add_link_to_end(ChainLayout,_link_dir,Options,,)
+        
+        #local _offset      = Chain_layout_compute_abs_offset(_link_dir,_rel_offset);
+        #if (_verbose > 2) #debug concat("Chain_layout_add_segment: _offset=<", vstr(3, _offset, ",", 0, 3), ">\n") #end
+        
+        Chain_layout_add_link_to_end(ChainLayout,_offset,_link_dir,Options,,)
         #local _links_added = _links_added + 1;
         
         // See where the link actually ended
@@ -684,6 +802,26 @@
 #end
 
 // End Chain_layout_add_catenary_segment
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Chain_layout_add_catenary_segment2(ChainLayout,EndPt,ChainLength,optional Tolerance, optional Options)
+//
+//  Utility version of catenary code that automatically determines the A
+//  parameter for the catenary based on a chain length that is hanging between the
+//  two end points.
+//
+#macro Chain_layout_add_catenary_segment2(ChainLayout,EndPt,ChainLength,optional Tolerance, optional Options)
+    #local _start_pos       = #if(ChainLayout.num_links = 0) ChainLayout.chain_loc; #else ChainLayout.links[ChainLayout.num_links-1].link_front; #end 
+    #local _tolerance       = #ifdef(Tolerance) Tolerance; #else 0.001; #end
+    #local _distance        = vlength(EndPt - _start_pos);
+    #local _chain_length    = max(ChainLength,_distance);
+    #local _catenary_a      = Chain_layout_compute_catenary_a(ChainLength,_distance,_tolerance);
+    
+    Chain_layout_add_catenary_segment(ChainLayout,EndPt,_catenary_a,Options)
+#end
+
+// End Chain_layout_add_catenary_segment2
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
@@ -704,17 +842,21 @@
     #local _cur_rot                 = 0;
     #while (_cur_rot <= _max_rot)
         #local _link_spec   = Chain_layout_select_link_spec(ChainLayout,ChainLayout.num_links,_back_loc,Options);
+        #local _rel_offset  = Chain_layout_select_link_offset(ChainLayout,ChainLayout.num_links,_back_loc,Options);
+        #local _last_orient = Chain_layout_last_link_orientation(ChainLayout);
+        #local _offset      = Chain_layout_compute_abs_offset(_last_orient,_rel_offset);
+
         #local _link_len    = _link_spec.link_inner.y;
         #local _link_arc    = degrees(_link_len/_coil_radius);
         #local _link_arc    = degrees(ChordRadius2Arc(_link_len,_coil_radius));
         #local _link_offset = _offset_mult * _link_spec.link_size.x;
         
-        #local _front_loc   = CoilPt + _coil_axis*_link_offset*_link_arc/360 + vaxis_rotate(_back_loc - CoilPt, _coil_axis, _link_arc);
-        #local _orientation = vnormalize(_front_loc - _back_loc);
-        #ifdef (Chain_layout_verbose) #debug concat("Chain_layout_add_coil_segment: _back_loc=<", vstr(3, _back_loc, ",", 0, 2), ">; _front_loc=<", vstr(3, _front_loc, ",", 0, 2), ">\n") #end
-        Chain_layout_add_link_to_end(ChainLayout,_orientation,Options,,)
+        #local _link_front   = CoilPt + _coil_axis*_link_offset*_link_arc/360 + vaxis_rotate(_back_loc - CoilPt, _coil_axis, _link_arc);
+        #local _orientation = vnormalize(_link_front - _back_loc);
+        #ifdef (Chain_layout_verbose) #debug concat("Chain_layout_add_coil_segment: _back_loc=<", vstr(3, _back_loc, ",", 0, 2), ">; _link_front=<", vstr(3, _link_front, ",", 0, 2), ">\n") #end
+        Chain_layout_add_link_to_end(ChainLayout,_offset,_orientation,Options,,)
         
-        #local _back_loc    = _front_loc;
+        #local _back_loc    = _link_front;
         #local _cur_rot     = _cur_rot + _link_arc;
     #end
         

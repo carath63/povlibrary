@@ -70,11 +70,14 @@
 // Computes the length of the chord with the given arc height in a circle
 // with the given radius.
 //
+#declare fn_RadiusHeight2Chord  = function(Radius,Height) {
+    2*(sqrt(2*Radius*Height - Height*Height))
+}
 #macro RadiusHeight2Chord(Radius,Height)
     #if (Radius < 0 | Height < 0 | Height > Radius)
         #error concat("RadiusHeight2Chord(", str(Radius,0,5), ",", str(Height,0,5), "): Invalid Height\n")
     #end    
-    2*(sqrt(2*Radius*Height - Height*Height))
+    fn_RadiusHeight2Chord(Radius,Height) //2*(sqrt(2*Radius*Height - Height*Height))
 #end
 
 // End RadiusHeight2Chord
