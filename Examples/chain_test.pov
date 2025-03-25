@@ -3,6 +3,15 @@
  * Description:
  *      This is a simple scene using the sample silver chain definition
  *  of the various chain generation functions in libchain.inc
+ *
+ *  The scene contains the following:
+ *
+ *      - Coil segment around a cylinder
+ *      - Straight segment from cylinder to the floor
+ *      - Spline segment lying on the plane from coil to a point near the first pole
+ *      - Straight segment from the end of the spline to the top of the first pole
+ *      - Slack segment from first pole to second pole
+ *      - Catenary segment from second pole to third pole
  ******************************************************************************/
 
 #version 3.8;
@@ -69,7 +78,7 @@ global_settings {
 // Camera default configuration
 //
 
-#declare camera_location        = <0, Math_Scale(SCALE_INCH, 6), -Math_Scale(SCALE_INCH, 36)>;
+#declare camera_location        = <0, Math_Scale(SCALE_CM, 200), -Math_Scale(SCALE_M, 2)>;
 #declare camera_lookat          = <0, 0, 0>;
 #declare camera_blur_focus      = camera_lookat;
 #declare camera_use_blur        = false;
@@ -84,107 +93,326 @@ global_settings {
 //
 
 //-----------------------------------------------------------------------------
-// Scene_chain_segment(ChainLayout)
+// Scene_variables()
 //
-#macro Scene_chain_segment(ChainLayout)
-    #local _a   = ChainLayout.resting_link_angle;
-    
-    #local _scs_z_rot_fn    = function(N,x,y,z) {
-        (0.5 - mod(N,2))*_a
-    }
-    #local _options         = Chain_layout_options_create(,,,_z_offset_fn,);
-    
-    Chain_layout_add_segment(_chain_layout,Scene_chain_straight_segment_end,_options)
-    Chain_layout_add_segment(_chain_layout,Scene_chain_slack_segment_start,)
-#end
-
-// End Scene_chain_segment
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-// Scene_chain_slack_segment(ChainLayout)
+//      Set default values for any scene location, length, etc. variables
+//  that are not defined by a particular Scene_View case below.
 //
-#macro Scene_chain_slack_segment(ChainLayout)
-    Chain_layout_add_slack_segment(ChainLayout,Scene_chain_slack_segment_end,Scene_chain_slack_segment_length,)
-#end
-
-// End Scene_chain_slack_segment
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-// Scene_chain_catenary_segment(ChainLayout)
+//  This macro is called first in the Scene_object_create() macro.  If a
+//  Scene_View defines Scene_object without calling Scene_object_create,
+//  be sure to call Scene_variables() first.
 //
-#macro Scene_chain_catenary_segment(ChainLayout)
-    Chain_layout_add_catenary_segment2(ChainLayout,Scene_chain_catenary_end,Scene_chain_catenary_length,,)
-#end
+#macro Scene_variables()
+    #ifndef(Scene_chain_link_size) #declare Scene_chain_link_size = Math_Scale(SCALE_CM, <0.5, 0.17, 1.15>); #end
 
-// End Scene_chain_catenary_segment
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-// Scene_chain()
-//
-#macro Scene_chain()
-    #declare Chain_layout_verbose   = 2;
-    // Define the locations of each of the chain segments
-    //
-    #ifndef(Scene_chain_start)
-        #declare Scene_chain_start  = <-Math_Scale(SCALE_CM, 25), 0, 0>;
-    #end                                                                                                                     
-    #local _link_length = #ifdef(Scene_chain_link_length) Scene_chain_link_length; #else Math_Scale(SCALE_CM, 1.15); #end
-    #local _link_width  = #ifdef(Scene_chain_link_width) Scene_chain_link_width; #else Math_Scale(SCALE_CM, 0.5); #end
-    #local _link_radius = #ifdef(Scene_chain_link_radius) Scene_chain_link_radius; #else Math_Scale(SCALE_CM, 0.085); #end
+    #declare Scene_chain_spec                       = Simple_silver_chain_spec_create(Scene_chain_link_size.z,Scene_chain_link_size.x,Scene_chain_link_size.y/2);
+    #declare Scene_chain_spec.resting_link_angle    = Simple_silver_chain_rest_angle(Scene_chain_spec.link_specs[0]);
     
-    #local _chain_spec      = Simple_silver_chain_spec_create(_link_length,_link_width,_link_radius);
-    
-    #local _link_rest_angle = Simple_silver_chain_rest_angle(_chain_spec.link_specs[0]);
-    
-    #local _link            = object { Simple_silver_chain_link_shape(_link_length,_link_width,_link_radius) }
+    #local _link            = object { Simple_silver_chain_link_shape(Scene_chain_link_size.z,Scene_chain_link_size.x,Scene_chain_link_size.y/2) }
     
     #local _link_pair       = union {
-        object { _link rotate <0, 0, -_link_rest_angle/2> }
-        object { _link rotate <0, 0, _link_rest_angle/2> translate <0, 0, _chain_spec.link_specs[0].link_inner.y> }    
+        object { _link rotate <0, 0, -Scene_chain_spec.resting_link_angle/2> }
+        object { _link rotate <0, 0, Scene_chain_spec.resting_link_angle/2> translate <0, 0, Scene_chain_spec.link_specs[0].link_inner.y> }    
     }
     
-    #local _resting_link_pair_min    = min_extent(_link_pair);
-    #local _resting_link_pair_max    = max_extent(_link_pair);
-    
-    #local _chain_layout                            = Chain_layout_create(_chain_spec,Scene_chain_start+<0, -_resting_link_pair_min.y, 0>,);
-    #declare _chain_layout.resting_link_angle       = _link_rest_angle;
-    #declare _chain_layout.resting_link_pair_min    = _resting_link_pair_min;
-    #declare _chain_layout.resting_link_pair_max    = _resting_link_pair_max;
-    
-    #ifndef(Scene_chain_straight_segment_end)
-        #declare Scene_chain_straight_segment_end   = <0, -_chain_layout.resting_link_pair_min.y, -Math_Scale(SCALE_CM, 10)>;
+    #declare Scene_chain_spec.resting_link_pair_min = min_extent(_link_pair);
+    #declare Scene_chain_spec.resting_link_pair_max = max_extent(_link_pair);
+    #declare Scene_chain_spec.resting_link_size     = Scene_chain_spec.resting_link_pair_max - Scene_chain_spec.resting_link_pair_min;
+
+    #ifndef(Scene_cylinder_start) #declare Scene_cylinder_start = Math_Scale(SCALE_CM, <-25, 25, 10>); #end
+    #ifndef(Scene_cylinder_end) #declare Scene_cylinder_end = Scene_cylinder_start + <25, 0, 0>; #end
+    #ifndef(Scene_cylinder_radius) #declare Scene_cylinder_radius = Math_Scale(SCALE_CM, 4); #end
+    #local _cylinder_length = vlength(Scene_cylinder_end - Scene_cylinder_start);
+    #local _cylinder_dir    = vnormalize(Scene_cylinder_end - Scene_cylinder_start);
+    #if (vlength(vcross(7,_cylinder_dir)) = 0)
+        #local _right   = -z;
+    #else
+        #local _right   = VPerp_To_Plane(y,_cylinder_dir);
     #end
-    #ifndef(Scene_chain_slack_segment_start)
-        #declare Scene_chain_slack_segment_start    = <Math_Scale(SCALE_CM, 5), Math_Scale(SCALE_CM, 2), 0>;
-    #end
-    #ifndef(Scene_chain_slack_segment_length)
-        #declare Scene_chain_slack_segment_length   = Math_Scale(SCALE_CM, 17);
-    #end    
-    #ifndef(Scene_chain_slack_segment_end)
-        #declare Scene_chain_slack_segment_end      = Scene_chain_slack_segment_start + 0.95*Scene_chain_slack_segment_length*x;
-    #end
-    #ifndef(Scene_chain_catenary_end)
-        #declare Scene_chain_catenary_end           = Scene_chain_slack_segment_end + <0, 0, -Math_Scale(SCALE_CM, 20)>;
-    #end
-    #ifndef(Scene_chain_catenary_length)
-        #declare Scene_chain_catenary_length        = 1.005*vlength(Scene_chain_catenary_end - Scene_chain_slack_segment_end);
-    #end                    
+    #declare Scene_chain_coil_start                 = Scene_cylinder_start + (Scene_cylinder_radius + Scene_chain_spec.resting_link_pair_max.y)*_right + 0.125*_cylinder_length*_cylinder_dir;
+    #ifndef(Scene_chain_coil_revolutions) #declare Scene_chain_coil_revolutions = 0.5 + int(0.75*_cylinder_length/Scene_chain_spec.resting_link_size.x); #end
+    #ifndef(Scene_chain_coil_offset) #declare Scene_chain_coil_offset = 1.0; #end
     
-    Scene_chain_segment(_chain_layout)
-    Scene_chain_slack_segment(_chain_layout)
-    Scene_chain_catenary_segment(_chain_layout)
+    // Note: this defines the starting and ending points for the straight drop segment, so no new variables introduced here
+    //
+    #declare Scene_chain_start                      = <Scene_chain_coil_start.x, Scene_chain_link_size.y, Scene_chain_coil_start.z>;
     
-    #local _chain   = object {
-        Chain_layout_render(_chain_layout)
-    }
+    #declare Scene_chain_layout                     = Chain_layout_create(Scene_chain_spec,Scene_chain_start,);
     
-    _chain
+    #debug concat(
+        "Scene_cylinder_start=<", vstr(3, Scene_cylinder_start, ",", 0, 3), ">\n",
+        "Scene_cylinder_end=<", vstr(3, Scene_cylinder_end, ",", 0, 3), ">\n",
+        "Scene_cylinder_radius=", str(Scene_cylinder_radius, 0, 3), "\n",
+        "Scene_chain_coil_start=<", vstr(3, Scene_chain_coil_start, ",", 0, 3), ">\n",
+        "Scene_chain_start=<", vstr(3, Scene_chain_start, ",", 0, 3), ">\n" 
+    )
+    
+    // Pole 1 and spline
+    //
+    #ifndef(Scene_pole1_location) #declare Scene_pole1_location = <Scene_cylinder_end.x + Math_Scale(SCALE_CM, 10), 0, Scene_cylinder_end.z>; #end
+    #ifndef(Scene_pole1_height) #declare Scene_pole1_height = Math_Scale(SCALE_CM, 30); #end
+    #ifndef(Scene_pole1_radius) #declare Scene_pole1_radius = Math_Scale(SCALE_CM, 1); #end
+    #ifndef(Scene_spline_end) #declare Scene_spline_end = Scene_pole1_location - <Math_Scale(SCALE_CM, 5)+Scene_pole1_radius, -Scene_chain_spec.resting_link_pair_min.y, 0>; #end
+    
+    #debug concat(
+        "Scene_pole1_location=<", vstr(3, Scene_pole1_location, ",", 0, 3), ">\n",
+        "Scene_pole1_height=", str(Scene_pole1_height, 0, 3), "\n",
+        "Scene_pole1_radius=", str(Scene_pole1_radius, 0, 3), "\n",
+        "Scene_spline_end=<", vstr(3, Scene_spline_end, ",", 0, 3), ">\n"
+    )
+    
+    // Pole 2 and slack
+    //
+    #ifndef(Scene_pole2_location) #declare Scene_pole2_location = Scene_pole1_location + <Math_Scale(SCALE_CM, 25), 0, 0>; #end
+    #ifndef(Scene_pole2_height) #declare Scene_pole2_height = Scene_pole1_height; #end
+    #ifndef(Scene_pole2_radius) #declare Scene_pole2_radius = Scene_pole1_radius; #end
+    #ifndef(Scene_pole2_slack_len) #declare Scene_pole2_slack_len = 1.25*vlength(Scene_pole2_location - Scene_pole1_location); #end
+
+    #debug concat(
+        "Scene_pole2_location=<", vstr(3, Scene_pole2_location, ",", 0, 3), ">\n",
+        "Scene_pole2_height=", str(Scene_pole2_height, 0, 3), "\n",
+        "Scene_pole2_radius=", str(Scene_pole2_radius, 0, 3), "\n",
+        "Scene_pole2_slack_len=", str(Scene_pole2_slack_len, 0, 3), "\n"
+    )
+    
+    // Pole 3 and catenary
+    //
+    #ifndef(Scene_pole3_location) #declare Scene_pole3_location = Scene_pole2_location + <Math_Scale(SCALE_CM, 25), 0, 0>; #end
+    #ifndef(Scene_pole3_height) #declare Scene_pole3_height = 1.25*Scene_pole2_height; #end
+    #ifndef(Scene_pole3_radius) #declare Scene_pole3_radius = Scene_pole2_radius; #end
+    #ifndef(Scene_pole3_catenary_len) #declare Scene_pole3_catenary_len = 1.25*vlength(Scene_pole3_location - Scene_pole2_location); #end
+
+    #debug concat(
+        "Scene_pole3_location=<", vstr(3, Scene_pole3_location, ",", 0, 3), ">\n",
+        "Scene_pole3_height=", str(Scene_pole3_height, 0, 3), "\n",
+        "Scene_pole3_radius=", str(Scene_pole3_radius, 0, 3), "\n",
+        "Scene_pole3_catenary_len=", str(Scene_pole3_catenary_len, 0, 3), "\n"
+    )
+    
 #end
 
-// End Scene_chain
+// End Scene_variables
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Scene_chain_coil_objects()
+//      Create the coil cylinder, the segment from the chain start to the coil
+//      start, the coil links, and the segment from the coil end to the floor
+//
+#macro Scene_chain_coil_objects()
+    #local _coil_objects    = union {
+        cylinder {
+            Scene_cylinder_start,
+            Scene_cylinder_end,
+            Scene_cylinder_radius
+            material {
+                texture {
+                    pigment { color rgb <1, 1, 0> }
+                    normal { bumps 0.1 scale 0.1 }
+                    finish {
+                        fresnel
+                        specular albedo 1.0
+                        roughness 0.1
+                        diffuse albedo 1.0
+                    }
+                }
+                interior { ior 1.5 }
+            }            
+        }
+    }
+    
+    #local _coil_axis   = vnormalize(Scene_cylinder_end - Scene_cylinder_start);
+    #local _r               = Scene_chain_spec.resting_link_angle;
+    #local _coil_zrot_fn    = function(N,x,y,z) {
+        (0.5 - mod(N,2))*_r
+    }
+    #local _coil_options    = Chain_layout_options_create(,,,,_coil_zrot_fn)
+    Chain_layout_add_segment(Scene_chain_layout, Scene_chain_coil_start,)
+    Chain_layout_add_coil_segment(Scene_chain_layout,_coil_axis,Scene_cylinder_start,Scene_chain_coil_revolutions,Scene_chain_coil_offset,_coil_options)
+    
+    #declare Scene_chain_coil_end   = Scene_chain_layout.links[Scene_chain_layout.num_links-1].link_front;
+    #declare Scene_chain_coil_drop_end  = <Scene_chain_coil_end.x, 0, Scene_chain_coil_end.z>;
+    Chain_layout_add_segment(Scene_chain_layout, Scene_chain_coil_drop_end,)
+    #if (Scene_chain_layout.links[Scene_chain_layout.num_links-1].link_front.y < 0)
+        #declare Scene_chain_layout.num_links   = Scene_chain_layout.num_links-1;
+    #end     
+    
+    _coil_objects
+#end
+
+// End Scene_chain_coil_objects
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Scene_chain_spline_create()
+//
+#macro Scene_chain_spline_create()
+    #local _floor_offset    = -Scene_chain_spec.resting_link_pair_min.y;
+    #local _last_link       = Scene_chain_layout.links[Scene_chain_layout.num_links-1].link_front;
+    #local _spline_dir      = vnormalize(Scene_spline_end - _last_link); 
+    #local _spline_len      = vlength(Scene_spline_end - _last_link);
+    #local _spline_xz       = _spline_dir*<1,0,1>;
+    
+    #local _raw_spline_len  = 0;
+    #local _raw_spline_pt   = _last_link;
+    #local _raw_spline  = spline {
+        quadratic_spline
+        _raw_spline_len, _raw_spline_pt,
+        
+        #if (_last_link.y > _floor_offset)
+            #local _v   = _last_link.y - Scene_chain_link_size.y;
+            #local _l   = Scene_chain_spec.link_specs[0].link_inner.y;
+            #local _h   = sqrt(_l*_l - _v*_v);
+            #local _xz  = _spline_xz*_h;
+            #local _pt  = <_xz.x, _floor_offset, _xz.z>;
+            #local _raw_spline_len  = _raw_spline_len + vlength(_pt - _raw_spline_pt);
+            _raw_spline_len, _pt,
+            #local _raw_spline_pt   = _pt;
+        #end
+        
+        #local _mid_pt  = _raw_spline_pt + (_spline_dir*0.5*_spline_len);
+        #local _pt      = <_mid_pt.x, _floor_offset, _mid_pt.z + 0.25*_spline_len>;
+        #local _raw_spline_len  = _raw_spline_len + vlength(_pt - _raw_spline_pt);
+        _raw_spline_len, _pt,
+        #local _raw_spline_pt   = _pt;
+        
+        #local _raw_spline_len  = _raw_spline_len + vlength(Scene_spline_end - _raw_spline_pt);
+        _raw_spline_len, Scene_spline_end
+    }
+    
+    #local _dd1     = 0;
+    #local _dspline = Spline_create_distance_spline(_raw_spline,"quadratic_spline",0,_raw_spline_len,0.25*Scene_chain_link_size.z,,,, _dd1)
+
+    #local _r               = Scene_chain_spec.resting_link_angle;
+    #local _spline_zrot_fn  = function(N,x,y,z) {
+        (0.5 - mod(N,2))*_r
+    }
+    #local _spline_options    = Chain_layout_options_create(,,,,_spline_zrot_fn)
+    
+    Chain_layout_add_spline_segment(Scene_chain_layout, _dspline, _dd1, _spline_options)
+    
+#end
+
+// End Scene_chain_spline_create
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Scene_chain_pole1_objects()
+//
+#macro Scene_chain_pole1_objects()
+    #local _objects = union {
+        cylinder {
+            Scene_pole1_location,
+            Scene_pole1_location + <0, Scene_pole1_height, 0>,
+            Scene_pole1_radius
+            material {
+                texture {
+                    pigment { color rgb <1, 0, 0> }
+                    finish {
+                        fresnel
+                        specular albedo 1.0
+                        roughness 0.01
+                        diffuse albedo 1.0
+                    }
+                }
+                interior { ior 1.5 }        
+            }
+        }    
+    }
+    Chain_layout_add_segment(Scene_chain_layout, Scene_pole1_location + <0, Scene_pole1_height+Scene_chain_link_size.x, 0>,)
+    
+    _objects
+#end 
+
+// End Scene_chain_pole1_objects
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Scene_chain_pole2_objects()
+//
+#macro Scene_chain_pole2_objects()
+    #local _objects = union {
+        cylinder {
+            Scene_pole2_location,
+            Scene_pole2_location + <0, Scene_pole2_height, 0>,
+            Scene_pole2_radius
+            material {
+                texture {
+                    pigment { color rgb <1, 0, 0> }
+                    finish {
+                        fresnel
+                        specular albedo 1.0
+                        roughness 0.01
+                        diffuse albedo 1.0
+                    }
+                }
+                interior { ior 1.5 }        
+            }
+        }    
+    }
+    Chain_layout_add_slack_segment(Scene_chain_layout, Scene_pole2_location + <0, Scene_pole2_height+Scene_chain_link_size.x, 0>,Scene_pole2_slack_len,)
+    
+    _objects
+#end
+
+// End Scene_chain_pole2_objects
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Scene_chain_pole3_objects()
+//
+#macro Scene_chain_pole3_objects()
+    #local _objects = union {
+        cylinder {
+            Scene_pole3_location,
+            Scene_pole3_location + <0, Scene_pole3_height, 0>,
+            Scene_pole3_radius
+            material {
+                texture {
+                    pigment { color rgb <1, 0, 0> }
+                    finish {
+                        fresnel
+                        specular albedo 1.0
+                        roughness 0.01
+                        diffuse albedo 1.0
+                    }
+                }
+                interior { ior 1.5 }        
+            }
+        }    
+    }
+    Chain_layout_add_catenary_segment2(Scene_chain_layout, Scene_pole3_location + <0, Scene_pole3_height+Scene_chain_link_size.x, 0>,Scene_pole3_catenary_len,,,)
+    
+    _objects
+#end
+
+// End Scene_chain_pole3_objects
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Scene_chain_objects()
+//
+//  This macro returns a union{} that consists of the various objects
+//  the chain travels around/over/near and the chain itself.
+//
+#macro Scene_chain_objects()
+    // Ensure all variables are set, and the Scene_chain_layout has been created
+    Scene_variables()                                                           
+    
+    #local _objects = union {
+        object { Scene_chain_coil_objects() }
+        Scene_chain_spline_create()
+        object { Scene_chain_pole1_objects() }
+        object { Scene_chain_pole2_objects() }
+        object { Scene_chain_pole3_objects() }
+        
+        object { Chain_layout_render(Scene_chain_layout) }
+    }
+    
+    _objects
+#end
+
+// End Scene_chain_objects
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
@@ -219,10 +447,11 @@ global_settings {
                 checker
                 color rgb 0
                 color rgb 1
-                scale 2
+                scale 4
             }    
         }
-        object { Scene_chain() }
+        #ifndef (Scene_chain_objects_result) #declare Scene_chain_objects_result = object { Scene_chain_objects() }; #end
+        object { Scene_chain_objects_result }
         #if(Scene_use_camera_light)    
         object { Scene_camera_light() }
         #end
@@ -234,6 +463,27 @@ global_settings {
 // End Scene_object_create
 //-----------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------
+// Scene_auto_set_camera(Obj)
+//
+#macro Scene_auto_set_camera(Obj)
+    #local _obj_min = min_extent(Obj);
+    #local _obj_max = max_extent(Obj);
+    #local _obj_c   = (_obj_min + _obj_max)/2;
+    #local _obj_sz  = _obj_max - _obj_min;
+    
+    #declare camera_lookat      = <_obj_c.x, _obj_c.y, _obj_c.z>;
+    #local _max_dim             = max(_obj_sz.x,_obj_sz.y,_obj_sz.z);
+    #declare camera_location    = <camera_lookat.x, _obj_max.y, camera_lookat.z -1.5*_max_dim>;
+    
+    #debug concat(
+        "camera_lookat=<", vstr(3, camera_lookat, ",", 0, 3), ">\n",
+        "camera_location=<", vstr(3, camera_location, ",", 0, 3), ">\n"
+    ) 
+#end
+
+// End Scene_auto_set_camera
+//-----------------------------------------------------------------------------
 
 // End Scene object declarations
 //=============================================================================
@@ -245,6 +495,8 @@ global_settings {
 #switch(val(str(Scene_View,0,2)))
     #case(1.1)
         #declare Scene_use_camera_light = true;
+        #declare Scene_chain_objects_result   = object { Scene_chain_objects() }
+        Scene_auto_set_camera(Scene_chain_objects_result)
     #break
     
     #else

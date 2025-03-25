@@ -843,7 +843,11 @@
     #while (_cur_rot <= _max_rot)
         #local _link_spec   = Chain_layout_select_link_spec(ChainLayout,ChainLayout.num_links,_back_loc,Options);
         #local _rel_offset  = Chain_layout_select_link_offset(ChainLayout,ChainLayout.num_links,_back_loc,Options);
-        #local _last_orient = Chain_layout_last_link_orientation(ChainLayout);
+        #local _last_orient = Chain_layout_last_link_orientation(ChainLayout);          
+        
+        // TODO: Using this as the offset for adding to the end of the link is incorrect.  It needs to be
+        // computed outside of that to set the back loc and front loc correctly.
+        //
         #local _offset      = Chain_layout_compute_abs_offset(_last_orient,_rel_offset);
 
         #local _link_len    = _link_spec.link_inner.y;
