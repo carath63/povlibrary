@@ -642,6 +642,7 @@
 // Chain_layout_add_slack_segment(ChainLayout,EndPt,SlackLength,optional Options)
 //
 #macro Chain_layout_add_slack_segment(ChainLayout,EndPt,SlackLength,optional Options)
+    #local _verbose = #ifdef(Chain_layout_verbose) Chain_layout_verbose; #else 0; #end
     // Create a quadratic spline between the front of the lat link in the chain layout and the EndPt,
     // with an estimated sag point in the middle to cause the length of the chain to be SlackLength.
     //
@@ -657,17 +658,18 @@
     #local _slack_v         = 1.1*sqrt(_slack_a*_slack_a - _slack_h*_slack_h/4);    // 1.1 mult accounts for curvature
     
     #if (_pt0.y < EndPt.y)
-    #local _mid             = EndPt.y - _pt0_end/4;
+    #local _mid             = EndPt - _pt0_end/4;
     #else                                          
     #local _mid             = _pt0 + _pt0_end/4;
     #end
     #local _ptmid           = _mid - <0, (_slack_v - abs(_pt0_end.y))/2, 0>;
+    #local _ptmid           = _mid - <0, _slack_v/2, 0>;
     #local _ptmid_dist      = vlength(_ptmid - _pt0); 
     
     // Use the a distance adjusted version of the spline to add a spline segment of SlackLength to the
     // chain
     //
-    #ifdef(Chain_layout_verbose)
+    #if(_verbose)
         #debug concat("Chain_layout_add_slack_segment:\n")
         #debug concat("   ", str(_pt0_sdist, 0, 3), ", <", vstr(3, _pt0, ",", 0, 3), ">\n")
         #debug concat("   ", str(_ptmid_dist, 0, 3), ", <", vstr(3, _ptmid, ",", 0, 3), ">\n")
@@ -680,7 +682,7 @@
         _slack_len, EndPt
     }
     #local _dspline_len = 0;
-    #local _dspline     = Spline_create_distance_spline(_spline,"quadratic_spline",0.0,_slack_len+1,0.05,,,,_dspline_len)
+    #local _dspline     = Spline_create_distance_spline(_spline,"quadratic_spline",0.0,_slack_len,0.05,,,,_dspline_len)
     Chain_layout_add_spline_segment(ChainLayout,_dspline,_dspline_len,Options)
 #end
 
@@ -867,6 +869,115 @@
 #end
 
 // End Chain_layout_add_coil_segment
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Chain_layout_add_drape_segment(ChainLayout,DrapeObject,DrapeEnd,StopAtEdge,optional Options)
+//
+//  Adds links to the chain from the current end of the chain towards the given DrapeEnd, (only the
+//  XZ plane direction is considered at this point).  If StopAtEdge is true, stop adding links
+//  as soon as the last link lying on the object is added.  If false, continue with a straight/slack
+//  segment to the endpoint.
+//
+//  The Options may include a function for computing slack length for segments of the chain
+//  based on the current position and the end position of the segment being added.
+//
+#declare Chain_layout_default_drape_slack_fn  = function(xo,yo,zo,xe,ye,ze) {
+    0
+}
+#declare Chain_layout_default_drape_object_offset_fn    = function(xo,yo,zo,xe,ye,ze) {
+    0
+}    
+#declare Chain_layout_default_drape_scan_tolerance  = 5;    
+#macro Chain_layout_add_drape_segment(ChainLayout,DrapeObject,DrapeEnd,StopAtEdge,optional Options)
+    #local _verbose         = #ifdef(Chain_layout_verbose) Chain_layout_verbose; #else 0; #end
+    #local _start_pos   = #if(ChainLayout.num_links = 0) ChainLayout.chain_loc; #else ChainLayout.links[ChainLayout.num_links-1].link_front; #end
+    #local _options         = #ifdef(Options) Options; #else ChainLayout.default_options; #end
+    #local _slack_fn        = #ifdef(_options.drape_slack_fn) _options.drape_slack_fn; #else Chain_layout_default_drape_slack_fn; #end
+    #local _offset_fn       = #ifdef(_options.drape_object_offset_fn) _options.drape_object_offset_fn; #else Chain_layout_default_drape_object_offset_fn; #end
+    #local _scan_tol        = #ifdef(_options.drape_scan_tol) _options.drape_scan_tol; #else Chain_layout_default_drape_scan_tolerance; #end
+    
+    #local _done            = false;
+    #local _cur_hdist       = 0;
+    #local _max_hdist       = vlength(DrapeEnd*<1,0,1> - _start_pos*<1,0,1>);
+    
+    #while (!_done)
+        // Where are we now and the relative direction to the DrapeEnd
+        #local _cur_pos     = #if(ChainLayout.num_links = 0) ChainLayout.chain_loc; #else ChainLayout.links[ChainLayout.num_links-1].link_front; #end
+        #local _cur_disp    = DrapeEnd*<1,0,1> - _cur_pos*<1,0,1>;
+        #local _cur_dist    = vlength(_cur_disp);
+        #local _cur_dir     = vnormalize(_cur_disp);
+        
+        #if (_verbose > 1)
+            #debug concat(
+                "Chain_layout_add_drape_segment:\n",
+                "   _cur_pos = <", vstr(3, _cur_pos, ",", 0, 3), ">\n",
+                "   _cur_dir = <", vstr(3, _cur_dir, ",", 0, 3), ">\n"
+            )
+        #end
+        
+        
+        // Scan from 90*y to -90*y in steps of _scan_tol along the _cur_dir axis
+        // until a trace to the object gets a hit, and use that hit point as the
+        // end point of a segment.
+        //
+        // If no hit is found, end the loop
+        #local _cur_angle   = 90;
+        #local _cur_nrm     = <0,0,0>;
+        #while (_cur_angle > -90 & vlength(_cur_nrm) = 0)
+            #local _scan_dir    = vtransform(vrotate(z,-_cur_angle*x),Reorient_Trans(z,_cur_dir));
+            #local _cur_hit     = trace(DrapeObject, _cur_pos, _scan_dir, _cur_nrm);
+            #if (vlength(_cur_nrm) = 0)
+                #local _cur_angle   = _cur_angle - _scan_tol;
+            #end 
+        #end
+        
+        #if (vlength(_cur_nrm) > 0)
+            #local _cur_hit_disp    = _cur_hit - _cur_pos;
+            #local _cur_hit_dist    = vlength(_cur_hit_disp);
+            #local _cur_hit_dir     = vnormalize(_cur_hit_disp);
+            #local _cur_hit_right   = VPerp_To_Plane(y, _cur_hit_dir);
+            #local _cur_hit_up      = VPerp_To_Plane(_cur_hit_dir,_cur_hit_right);
+            #local _cur_end_pt      = _cur_hit + _cur_hit_up*_offset_fn(_cur_pos.x,_cur_pos.y,_cur_pos.z,_cur_hit.x,_cur_hit.y,_cur_hit.z);
+            #local _cur_slack       = _slack_fn(_cur_pos.x,_cur_pos.y,_cur_pos.z,_cur_hit.x,_cur_hit.y,_cur_hit.z);
+            #local _cur_end_len     = vlength(_cur_end_pt - _cur_pos) + _cur_slack;
+            #local _cur_hdist       = _cur_hdist + vlength(_cur_hit_disp*<1,0,1>);
+            
+            #if (_verbose)
+                #debug concat("Chain_layout_add_drape_segment: Adding slack segment from <", vstr(3, _cur_pos, ",", 0, 3), "> to <", vstr(3, _cur_end_pt, ",", 0, 3), "> with length ", str(_cur_end_len, 0, 3), "\n")
+            #end
+            #if (_cur_slack > 0)
+            Chain_layout_add_slack_segment(ChainLayout,_cur_end_pt,_cur_end_len,Options)
+            #else
+            Chain_layout_add_segment(ChainLayout,_cur_end_pt,Options)
+            #end
+            
+            #if (_cur_hdist >= _max_hdist)
+                #local _done    = true;
+            #end    
+        #else
+            // We can no longer hit the object
+            //
+            #local _done    = true;
+            
+            // See if we should add another segment to the DrapeEnd
+            #if (!StopAtEdge & _cur_hdist < _max_hdist)
+                #local _cur_pos         = #if(ChainLayout.num_links = 0) ChainLayout.chain_loc; #else ChainLayout.links[ChainLayout.num_links-1].link_front; #end
+                #local _cur_end_dist    = vlength(DrapeEnd - _cur_pos);
+                #local _cur_slack       = _slack_fn(_cur_pos.x,_cur_pos.y,_cur_pos.z,DrapeEnd.x,DrapeEnd.y,DrapeEnd.z);
+                #if (_cur_slack > 0)
+                    Chain_layout_add_slack_segment(ChainLayout,DrapeEnd,_cur_end_dist+_cur_slack,Options)
+                #else
+                    Chain_layout_add_segment(ChainLayout,DrapeEnd,Options)
+                #end        
+            #end
+        #end
+        
+    #end
+    
+#end 
+
+// End Chain_layout_add_drape_segment
 //-----------------------------------------------------------------------------
 
 // End Chain Layout Construction Macros

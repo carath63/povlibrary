@@ -297,6 +297,48 @@ global_settings {
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+// Find_pole_intersection(PoleObject,GroundPt)
+//
+//      Finds the point at the top of the pole where a chain link would hit
+//  if a straight line were drawn from the GroundPt to the top of the pole
+//  object.
+//
+#macro Find_pole_intersection(PoleObject,GroundPt)
+    #local _pole_min        = min_extent(PoleObject);
+    #local _pole_max        = max_extent(PoleObject);
+    #local _pole_c          = (_pole_min + _pole_max)/2;
+    #local _pole_ground_c   = _pole_c*<1,0,1> + <0, GroundPt.y, 0>;
+    #local _ground_pole_dir = (_pole_ground_c - GroundPt);
+    #local _ground_pole_rot = degrees(atan2(_ground_pole_dir.x,_ground_pole_dir.z));
+    #local _nrm             = <0,0,0>;
+
+    #debug concat("GroundPt=<", vstr(3, GroundPt, ",", 0, 3), ">\n")
+    #debug concat("_pole_c=<", vstr(3, _pole_c, ",", 0, 3), ">\n")
+    #debug concat("_ground_pole_rot=", str(_ground_pole_rot, 0, 3), "\n")
+    #debug concat("_ground_pole_dir=<", vstr(3, _ground_pole_dir, ",", 0, 3), ">\n")
+    
+    #local _step            = 1;
+    #local _cur_a           = 90;
+    #local _ipt             = <0,0,0>;
+    #while (_cur_a > -90 & vlength(_nrm) = 0)
+        #local _a1      = vrotate(z,<-_cur_a,0,0>);
+        #local _tdir    = vnormalize(vrotate(_a1,<0, _ground_pole_rot, 0>));
+        #local _hit     = trace(PoleObject, GroundPt, _tdir, _nrm);
+        #local _cur_a   = _cur_a - _step;
+    #end                                                           
+    
+    #if (vlength(_nrm) = 0)
+        #error concat("No intersection found with pole from <", vstr(3, GroundPt, ",", 0, 3), ">\n")
+    #end
+    
+    _hit    
+    
+#end
+
+// End Find_pole_intersection
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // Scene_chain_pole1_objects()
 //
 #macro Scene_chain_pole1_objects()
@@ -319,7 +361,49 @@ global_settings {
             }
         }    
     }
-    Chain_layout_add_segment(Scene_chain_layout, Scene_pole1_location + <0, Scene_pole1_height+Scene_chain_link_size.x, 0>,)
+    #local _last_pt     = Scene_chain_layout.links[Scene_chain_layout.num_links-1].link_front;
+    
+    // This part is easier than what Find_pole_intersection does...
+    //
+    #local _chain_pole_disp     = (Scene_pole1_location*<1,0,1> - _last_pt*<1,0,1>);
+    #local _chain_pole_dist     = vlength(_chain_pole_disp);
+    #local _chain_pole_dir      = vnormalize(_chain_pole_disp);
+    
+    #local _chain_pole_hdisp    = (Scene_pole1_location.y + Scene_pole1_height - _last_pt.y);
+    #local _chain_pole_angle    = degrees(atan2(_chain_pole_hdisp,vlength(_chain_pole_disp)));
+    #local _chain_pole_pt       = _last_pt + _chain_pole_dir*(_chain_pole_dist - Scene_pole1_radius) + <0, _chain_pole_hdisp, 0>;
+    #local _chain_pole_axis     = vnormalize(_chain_pole_pt - _last_pt);
+    #local _chain_pole_right    = VPerp_To_Plane(y, _chain_pole_axis);
+    #local _chain_pole_up       = VPerp_To_Plane(_chain_pole_axis, _chain_pole_right);
+    
+    #debug concat("_chain_pole_pt=<", vstr(3, _chain_pole_pt, ",", 0, 3), ">\n")
+    #local _chain_end           = _chain_pole_pt + 0.5*Scene_chain_link_size.x*_chain_pole_up;
+    
+    Chain_layout_add_segment(Scene_chain_layout, _chain_end,)
+    
+    // Find the axis between the last chain link and the top of pole 2
+    //
+    #local _last_pt             = Scene_chain_layout.links[Scene_chain_layout.num_links-1].link_front;
+    #local _pole2_top           = Scene_pole2_location + <0, Scene_pole2_height, 0>;
+    #local _pole1_top           = Scene_pole1_location + <0, Scene_pole1_height, 0>;
+    #local _chain_pole1_disp    = _pole1_top*<1,0,1> - _last_pt*<1,0,1>;
+    #local _chain_pole1_dist    = vlength(_chain_pole1_disp);
+    #local _chain_pole1_dir     = vnormalize(_chain_pole1_disp);
+    
+    #local _chain_pole2_disp    = _pole2_top*<1,0,1> - _last_pt*<1,0,1>;
+    #local _chain_pole2_dist    = vlength(_chain_pole2_disp);
+    #local _chain_pole2_dir     = vnormalize(_chain_pole2_disp);
+    
+    #local _a   = acos(vdot(_chain_pole1_dir,_chain_pole2_dir));
+    #local _c   = Scene_pole1_radius*sin(pi - 2*_a)/sin(_a);
+    #local _chain_pole1_pt      = _last_pt*<1,0,1> + _chain_pole2_dir*_c + <0, Scene_pole2_height, 0>;
+    #local _chain_pole1_disp    = _chain_pole1_pt - _last_pt;
+    #local _chain_pole1_dir     = vnormalize(_chain_pole1_disp);
+    #local _chain_pole1_right   = VPerp_To_Plane(y,_chain_pole1_dir);
+    #local _chain_pole1_up      = VPerp_To_Plane(_chain_pole1_dir,_chain_pole1_right);
+    #local _chain_end           = _chain_pole1_pt + 0.5*Scene_chain_link_size.x*_chain_pole1_up;
+    
+    Chain_layout_add_segment(Scene_chain_layout, _chain_end,) 
     
     _objects
 #end 
@@ -350,7 +434,44 @@ global_settings {
             }
         }    
     }
-    Chain_layout_add_slack_segment(Scene_chain_layout, Scene_pole2_location + <0, Scene_pole2_height+Scene_chain_link_size.x, 0>,Scene_pole2_slack_len,)
+    
+    #local _last_pt             = Scene_chain_layout.links[Scene_chain_layout.num_links-1].link_front;
+    #local _chain_pole2_disp    = Scene_pole2_location*<1,0,1> - _last_pt*<1,0,1>;
+    #local _chain_pole2_dist    = vlength(_chain_pole2_disp);
+    #local _chain_pole2_dir     = vnormalize(_chain_pole2_disp);
+    #local _chain_pole2_pt      = _last_pt*<1,0,1> + _chain_pole2_dir*(_chain_pole2_dist - Scene_pole1_radius) + <0, Scene_pole2_height, 0>;
+    #local _chain_pole2_axis    = vnormalize(_chain_pole2_pt - _last_pt);
+    #local _chain_pole2_right   = VPerp_To_Plane(y, _chain_pole2_axis);
+    #local _chain_pole2_up      = VPerp_To_Plane(_chain_pole2_axis, _chain_pole2_right);
+    #debug concat("_chain_pole2_pt=<", vstr(3, _chain_pole2_pt, ",", 0, 3), ">\n")
+    #local _chain_end           = _chain_pole2_pt + 0.5*Scene_chain_link_size.x*_chain_pole2_up;
+
+    Chain_layout_add_slack_segment(Scene_chain_layout, _chain_end,Scene_pole2_slack_len,)
+    
+    // Cross the pole again
+    //
+    #local _last_pt             = Scene_chain_layout.links[Scene_chain_layout.num_links-1].link_front;
+    #local _pole3_top           = Scene_pole3_location + <0, Scene_pole3_height, 0>;
+    #local _pole2_top           = Scene_pole2_location + <0, Scene_pole2_height, 0>;
+    #local _chain_pole2_disp    = _pole2_top*<1,0,1> - _last_pt*<1,0,1>;
+    #local _chain_pole2_dist    = vlength(_chain_pole2_disp);
+    #local _chain_pole2_dir     = vnormalize(_chain_pole2_disp);
+    
+    #local _chain_pole3_disp    = _pole3_top*<1,0,1> - _last_pt*<1,0,1>;
+    #local _chain_pole3_dist    = vlength(_chain_pole3_disp);
+    #local _chain_pole3_dir     = vnormalize(_chain_pole3_disp);
+    
+    #local _a   = acos(vdot(_chain_pole2_dir,_chain_pole3_dir));
+    #local _c   = Scene_pole2_radius*sin(pi - 2*_a)/sin(_a);
+    #local _chain_pole2_pt      = _last_pt*<1,0,1> + _chain_pole3_dir*_c + <0, Scene_pole2_height, 0>;
+    #local _chain_pole2_disp    = _chain_pole2_pt - _last_pt;
+    #local _chain_pole2_dir     = vnormalize(_chain_pole2_disp);
+    #local _chain_pole2_right   = VPerp_To_Plane(y,_chain_pole2_dir);
+    #local _chain_pole2_up      = VPerp_To_Plane(_chain_pole2_dir,_chain_pole2_right);
+    #local _chain_end           = _chain_pole2_pt + 0.5*Scene_chain_link_size.x*_chain_pole2_up;
+    
+    Chain_layout_add_segment(Scene_chain_layout, _chain_end,) 
+    
     
     _objects
 #end
@@ -381,7 +502,18 @@ global_settings {
             }
         }    
     }
-    Chain_layout_add_catenary_segment2(Scene_chain_layout, Scene_pole3_location + <0, Scene_pole3_height+Scene_chain_link_size.x, 0>,Scene_pole3_catenary_len,,,)
+    #local _last_pt             = Scene_chain_layout.links[Scene_chain_layout.num_links-1].link_front;
+    #local _chain_pole3_disp    = Scene_pole3_location*<1,0,1> - _last_pt*<1,0,1>;
+    #local _chain_pole3_dist    = vlength(_chain_pole3_disp);
+    #local _chain_pole3_dir     = vnormalize(_chain_pole3_disp);
+    #local _chain_pole3_pt      = _last_pt*<1,0,1> + _chain_pole3_dir*(_chain_pole3_dist - Scene_pole1_radius) + <0, Scene_pole3_height, 0>;
+    #local _chain_pole3_axis    = vnormalize(_chain_pole3_pt - _last_pt);
+    #local _chain_pole3_right   = VPerp_To_Plane(y, _chain_pole3_axis);
+    #local _chain_pole3_up      = VPerp_To_Plane(_chain_pole3_axis, _chain_pole3_right);
+    #debug concat("_chain_pole3_pt=<", vstr(3, _chain_pole3_pt, ",", 0, 3), ">\n")
+    #local _chain_end           = _chain_pole3_pt + 0.5*Scene_chain_link_size.x*_chain_pole3_up;
+
+    Chain_layout_add_catenary_segment2(Scene_chain_layout, _chain_end,Scene_pole3_catenary_len,,,)
     
     _objects
 #end
