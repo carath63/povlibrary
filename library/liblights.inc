@@ -80,9 +80,9 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Light_config_create(Lct,Lm)
+// Light_config_create_old(Lct,Lm)
 //
-#macro Light_config_create(Lct,Lm)
+#macro Light_config_create_old(Lct,Lm)
     #local _cfg = dictionary {
         .light_color:   Lct,
         .light_lumens:  Lm,

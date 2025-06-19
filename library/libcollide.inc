@@ -311,6 +311,73 @@
 // End Object Abutting Macros
 //=============================================================================
 
+//=============================================================================
+// Macros for setting objects on uneven surfaces
+//
+
+//-----------------------------------------------------------------------------
+// Get_surface_bounds(SurfaceObject,LBounds,UBounds,Tolerance,optional RestingObject,optional ROHeight)
+//
+//      This is a utility macro that scans a surface object by shooting rays
+//  from above the maximum height of the object in the -y direction and recording
+//  the maximum and minimum height values.  If RestingObject is supplied,
+//  only points that would be covered by the RestingObject are considered in
+//  the scan.  The ROHeight should be the maximum height (y) of the Resting object
+//  when resting on the y=0 plane.
+//
+#macro Get_surface_bounds(SurfaceObject,LBounds,UBounds,Tolerance,optional RestingObject,optional ROHeight)
+    #local _min_pt  = UBounds;
+    #local _max_pt  = LBounds;
+    
+    #ifdef(RestingObject)
+        #local _ro_trace_y  = #ifdef(ROHeight) ROHeight+1 ; #else 1e6; #end
+    #else
+        #local _pt_included = true;
+    #end        
+    
+    #for (_z, LBounds.z, UBounds.z, Tolerance)
+        #for (_x LBounds.x, UBounds.x, Tolerance)
+            #local _nrm = <0,0,0>;
+            #local _try = <_x, UBounds.y, _z>;
+            #local _hit = trace(SurfaceObject, _try, -y, _nrm);
+            #if (vlength(_nrm) > 0)
+                //#debug concat("_try=<", vstr(3, _try, ",", 0, 3), ">; _hit=<", vstr(3, _hit, ",", 0, 3), ">\n")
+                #ifdef(RestingObject)
+                    #local _ro_nrm  = <0,0,0>;
+                    #local _ro_pt   = trace(RestingObject, <_x, _ro_trace_y, _z>, -y, _ro_nrm);
+                    #if (vlength(_ro_nrm) > 0)
+                        #local _pt_included = true;
+                    #else
+                        #local _pt_included = false;
+                    #end        
+                #end
+                #if (_pt_included)
+                    #if (_hit.y < _min_pt.y)
+                        #local _min_pt  = _hit;
+                    #end
+                    #if (_hit.y > _max_pt.y)
+                        #local _max_pt  = _hit;
+                    #end 
+                #end           
+            #end
+        #end
+    #end
+    
+    #local _bounds  = dictionary {
+        .min_pt:    _min_pt,
+        .max_pt:    _max_pt
+    }
+    ;
+    
+    _bounds
+#end  
+
+// End Get_surface_bounds
+//-----------------------------------------------------------------------------
+
+// End Macros for setting objects on uneven surfaces
+//=============================================================================
+
 #version Libcollide_Inc_Temp;
 
 #end // ifndef (Libcollide_Inc_Temp)
