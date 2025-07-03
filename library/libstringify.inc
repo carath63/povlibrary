@@ -141,12 +141,16 @@
 //-----------------------------------------------------------------------------
 // SFY_transform_create()
 //
-#macro SFY_transform_create()
+#macro SFY_transform_create(optional FirstInstance)
     #local _transform   = dictionary {
         .num_transforms:    0,
         .transforms:    array
     }
     ;
+    
+    #ifdef(FirstInstance)
+        SFY_transform_add(_transform, FirstInstance)
+    #end    
     
     _transform
 #end
@@ -211,7 +215,7 @@
                     scale Transform.transforms[i].ivector
                 #break
                 #case(SFY_transform_type_matrix)
-                    matrix <Transform.mvals[0],Transform.mvals[1],Transform.mvals[2],Transform.mvals[3],Transform.mvals[4],Transform.mvals[5],Transform.mvals[6],Transform.mvals[7],Transform.mvals[8],Transform.mvals[9],Transform.mvals[10],Transform.mvals[11]>
+                    matrix <Transform.transforms[i].mvals[0],Transform.transforms[i].mvals[1],Transform.transforms[i].mvals[2],Transform.transforms[i].mvals[3],Transform.transforms[i].mvals[4],Transform.transforms[i].mvals[5],Transform.transforms[i].mvals[6],Transform.transforms[i].mvals[7],Transform.transforms[i].mvals[8],Transform.transforms[i].mvals[9],Transform.transforms[i].mvals[10],Transform.transforms[i].mvals[11]>
                 #break
                 #else
                     #error concat("SFY_transform_sdl: Unknown transform type ", str(Transform.itype, 0, 0), "\n")
