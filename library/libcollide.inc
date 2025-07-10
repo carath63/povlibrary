@@ -396,8 +396,8 @@
 
 #macro Col_object_bottom_triangle_create(Points)
     #local _triangle    = dictionary {
-        .verts: Points,
-        .center:    (Points[0] + Points[1] + Points[2])*<1/3,0,1/3>
+        .verts:     Points,
+        .center:    (Points[0] + Points[1] + Points[2])/3
     }
     ;
     
@@ -490,13 +490,13 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Col_object_bottom_radius_set_generate(Map,Object,Radius,TriangleResolution,RStream)
+// Col_object_bottom_radius_set_generate(Map,Object,Radius,RadiusResolution,TriangleResolution,RStream)
 //
 //  Generates a new RadiusSet for the given Map, Object, Radius, and TriangleResolution
 // by determining the maximum number of triangles to generate by rotating an equilateral
 // triangle at the given radius.
 //
-#macro Col_object_bottom_radius_set_generate(Map,Object,Radius,TriangleResolution,RStream)
+#macro Col_object_bottom_radius_set_generate(Map,Object,Radius,RadiusResolution,TriangleResolution,RStream)
     #local _radius_set  = Col_object_bottom_radius_set_create(Radius);
     
     #local _start_angle     = 0; //360*rand(RStream);
@@ -512,30 +512,31 @@
     
     #while (_cur_angle < _end_angle)
         #local _pts         = array[3];
-        #local _nnew        = 0;
         #local _npts        = 0;
         #for (i, 0, 2, 1)
             #local _pt_temp = _clip_to_bounds(Map.obj_center + vrotate(<0, 0, Radius>, <0, _cur_angle - i*120, 0>));
             #local _pt_nrm  = <0,0,0>;
             #local _pt_hit  = trace(Object, _pt_temp*<1,0,1>+y*(Map.obj_lbounds.y-1), y, _pt_nrm);
             #if (vlength(_pt_nrm) = 0)
-                #if (_radius_set.num_triangles > 0)
-                    #local _pts[i]  = _radius_set.triangles[_radius_set.num_triangles-1].verts[i];
-                    #local _npts    = _npts + 1;
-                #else
-                    #local _pts[i]  = <0,0,0>;
+                #local _rmin    = RadiusResolution;
+                #local _r2      = Radius - RadiusResolution/10;
+                #while (_r2 >= _rmin & vlength(_pt_nrm) = 0)
+                    #local _pt_temp = _clip_to_bounds(Map.obj_center + vrotate(<0, 0, _r2>, <0, _cur_angle - i*120, 0>));
+                    #local _pt_nrm  = <0,0,0>;
+                    #local _pt_hit  = trace(Object, _pt_temp*<1,0,1>+y*(Map.obj_lbounds.y-1), y, _pt_nrm);
+                    #local _r2      = _r2 - RadiusResolution/10;
                 #end
-            #else
+            #end     
+            #if (vlength(_pt_nrm) > 0)
                 #local _pts[i]  = _pt_hit;
                 #if (_pts[i].y < Map.min_y)
                     #local Map.min_y    = _pts[i].y;
                 #end
                 #local _npts    = _npts + 1;
-                #local _nnew    = _nnew + 1;    
             #end 
         #end
         
-        #if (_npts = 3 & _nnew > 0)
+        #if (_npts = 3)
             #local _triangle    = Col_object_bottom_triangle_create(_pts);
             Col_object_bottom_radius_set_add(_radius_set, _triangle)
         #end
@@ -554,7 +555,7 @@
     
     #local _cur_radius  = InitRadius;
     #while (_cur_radius < _map.max_radius)
-        #local _radius_set  = Col_object_bottom_radius_set_generate(_map,Object,_cur_radius,TriangleResolution,RStream);
+        #local _radius_set  = Col_object_bottom_radius_set_generate(_map,Object,_cur_radius,RadiusResolution,TriangleResolution,RStream);
         #if (_radius_set.num_triangles > 0)
             Col_object_bottom_map_add(_map,_radius_set)
         #end                                           
@@ -714,12 +715,13 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-// Col_object_bottom_triangle_transform(Triangle,Transform)
+// Col_object_bottom_triangle_transform(Triangle,Transform,UseYOffset)
 //
-#macro Col_object_bottom_triangle_transform(Triangle,Transform)
+#macro Col_object_bottom_triangle_transform(Triangle,Transform,UseVOffset)
+    #local _pmult   = #if(UseVOffset) <1,1,1>; #else <1,0,1>; #end
     #local _tpoints = array[3];
     #for (i, 0, 2, 1)
-        #local _tpoints[i]  = vtransform(Triangle.verts[i],Transform);
+        #local _tpoints[i]  = vtransform(Triangle.verts[i]*_pmult,Transform);
     #end                                                              
     #local _triangle    = Col_object_bottom_triangle_create(_tpoints);
     
@@ -732,6 +734,7 @@
 #macro Col_rest_map_on_surface_transform(Map,Surface,DropHeight,optional XZLocation,optional Floor)
     #local _xz_loc  = #ifdef(XZLocation) <1,0,1>*XZLocation; #else <0,0,0>; #end 
     #local _floor   = #ifdef(Floor) Floor; #else -1e6; #end
+    #local _dlevel  = #ifdef(Col_rest_map_on_surface_debug) Col_rest_map_on_surface_debug; #else 0; #end
     
     // Standard translation to get the object 
     #local _map_translation = SFY_transform_instance_create(SFY_transform_type_translate, _xz_loc - y*Map.min_y);
@@ -740,62 +743,91 @@
     #local _cur_object_trans        = transform { SFY_transform_sdl(_cur_object_transform) }
     
     #macro _get_surface_points(Triangle)
-        #local _p   = array[3];
+        #local _ps   = array[3];
         #for (k, 0, 2, 1)
             #local _nrm = <0,0,0>;
             #local _hit = trace(Surface, Triangle.verts[k]*<1,0,1> + y*DropHeight, -y, _nrm);
             #if (vlength(_nrm) = 0)
-                #local _hit = Triangle.verts[i]*<1,0,1> + y*_floor;
+                #local _hit = Triangle.verts[k]*<1,0,1> + y*_floor;
             #end 
-            #local _p[k]    = _hit;   
+            #local _ps[k]    = _hit;   
         #end
         
-        _p
+        _ps
     #end
+    
+    // Need to look at this more closely.  Something is happening that is shifting the object in the xz-plane, even though the center
+    // of each triangle is <0,0,0> + _loc.  Could be something with how the plane origin is being computed as it relates to
+    // the center of the object.
+    //
     
     #local _min_plane_y = -1e12;
     
-    #for (i, 0, Map.num_radius_sets-1, 1)
-        #for (j, 0, Map.radius_sets[i].num_triangles-1, 1)
-            #local _trans_triangle  = Col_object_bottom_triangle_transform(Map.radius_sets[i].triangles[j],_cur_object_trans);
-            #local _surface_pts     = _get_surface_points(_trans_triangle);
-            #local _plane_pts       = array[3];
-            #local _num_below       = 0;
-            #for (p, 0, 2, 1)
-                #if (_trans_triangle.verts[p].y < _surface_pts[p].y)
-                    #local _num_below       = _num_below + 1;
-                    #local _plane_pts[p]    = _surface_pts[p];
-                #else
-                    #local _plane_pts[p]    = _trans_triangle.verts[p];    
+    //#for (i, 0, Map.num_radius_sets-1, 1)
+    #for (i, Map.num_radius_sets-1, 0, -1)
+        #if (_dlevel > 0) #debug concat("Col_map_on_surface_transform: Radius set: ", str(Map.radius_sets[i].set_radius, 0, 6), "\n") #end
+        #local _num_attempts    = 0;
+        #local _num_shifts      = 1;
+        #while (_num_shifts > 0 & _num_attempts < 10)
+            #if (_num_attempts > 0 & _dlevel > 1)
+                #debug concat("Col_map_on_surface_transform: Attempt #", str(_num_attempts, 0, 0), " after ", str(_num_shifts, 0, 0), " shifts\n")
+            #end    
+            #local _num_shifts      = 0;
+            #local _num_attempts    = _num_attempts + 1;
+            #for (j, 0, Map.radius_sets[i].num_triangles-1, 1)
+                #local _trans_triangle  = Col_object_bottom_triangle_transform(Map.radius_sets[i].triangles[j],_cur_object_trans,true);
+                #local _trans_base      = Col_object_bottom_triangle_transform(Map.radius_sets[i].triangles[j],_cur_object_trans,false);
+                #local _surface_pts     = _get_surface_points(_trans_triangle);
+                #local _plane_pts       = array[3];
+                #local _num_below       = 0;
+                #for (p, 0, 2, 1)
+                    #if (_trans_triangle.verts[p].y < _surface_pts[p].y)
+                        #local _num_below       = _num_below + 1;
+                        #local _plane_pts[p]    = _surface_pts[p] - y*(_trans_triangle.verts[p].y - _trans_base.verts[p].y);
+                    #else
+                        #local _plane_pts[p]    = _trans_base.verts[p];    
+                    #end
+                #end
+                
+                #if (_num_below > 0)
+                    #local _num_shifts      = _num_shifts + 1;
+                    #local _plane_normal    = vcross(_plane_pts[2] - _plane_pts[0], _plane_pts[1] - _plane_pts[0]);
+                    #if (vlength(_plane_normal) > 0)
+                        #local _plane_normal    = vnormalize(_plane_normal);
+                        #local _plane_origin    = (_plane_pts[0] + _plane_pts[1] + _plane_pts[2])/3;
+                        /*
+                        #if (_plane_origin.y < _min_plane_y)
+                            #local _plane_origin    = <1,0,1>*_plane_origin + y*_min_plane_y;
+                        #else
+                            #local _min_plane_y = _plane_origin.y;
+                        #end 
+                        */           
+                        
+                        #if(_dlevel > 2) #debug concat("_plane_normal=<", vstr(3, _plane_normal, ",", 0, 9), ">; _plane_origin=<", vstr(3, _plane_origin, ",", 0, 9), ">\n") #end
+                        #if(_dlevel > 3)
+                        #for (p1, 0, 2, 1)
+                            #debug concat("    _surface_pts[", str(p1, 0, 0), "]=<", vstr(3, _surface_pts[p1], ",", 0, 6), ">\n")
+                            #debug concat("    _trans_triangle.verts[", str(p1, 0, 0), "]=<", vstr(3, _trans_triangle.verts[p1], ",", 0, 6), ">\n")
+                            #debug concat("    _trans_base.verts[", str(p1, 0, 0), "]=<", vstr(3, _trans_base.verts[p1], ",", 0, 6), ">\n")
+                            #debug concat("    _plane_pts[", str(p1, 0, 0), "]=<", vstr(3, _plane_pts[p1], ",", 0, 6), ">\n")
+                        #end            
+                        #end
+                        
+                        // Translate the bottom of the object so the center of the current triangle is at the origin
+                        #local _cur_object_transform    = SFY_transform_create(SFY_transform_instance_create(SFY_transform_type_translate, -Map.radius_sets[i].triangles[j].center*<1,0,1> - y*Map.min_y));
+                        
+                        // Add in the matrix rotation to align the object with the plane
+                        //
+                        SFY_transform_add_reorient_trans(_cur_object_transform,y,_plane_normal)
+                        
+                        // Add in the translation to the plane origin
+                        //
+                        SFY_transform_add(_cur_object_transform,SFY_transform_instance_create(SFY_transform_type_translate, _plane_origin))
+                        #local _cur_object_trans    = transform { SFY_transform_sdl(_cur_object_transform) }
+                    #end    
                 #end
             #end
-            
-            #if (_num_below > 0)
-                #local _plane_normal    = vcross(_plane_pts[2] - _plane_pts[0], _plane_pts[1] - _plane_pts[0]);
-                #if (vlength(_plane_normal) > 0)
-                    #local _plane_normal    = vnormalize(_plane_normal);
-                    #local _plane_origin    = (_plane_pts[0] + _plane_pts[1] + _plane_pts[2])/3;
-                    #if (_plane_origin.y < _min_plane_y)
-                        #local _plane_origin    = <1,0,1>*_plane_origin + _min_plane_y;
-                    #else
-                        #local _min_plane_y = _plane_origin.y;
-                    #end            
-                    
-                    #debug concat("_plane_normal=<", vstr(3, _plane_normal, ",", 0, 3), ">; _plane_origin=<", vstr(3, _plane_origin, ",", 0, 3), ">\n")
-                    
-                    // Translate the bottom of the object so the center of the current triangle is at the origin
-                    #local _cur_object_transform    = SFY_transform_create(SFY_transform_instance_create(SFY_transform_type_translate, -Map.radius_sets[i].triangles[j].center - y*Map.min_y));
-                    
-                    // Add in the matrix rotation to align the object with the plane
-                    //
-                    SFY_transform_add_reorient_trans(_cur_object_transform,y,_plane_normal)
-                    
-                    // Add in the translation to the plane origin
-                    //
-                    SFY_transform_add(_cur_object_transform,SFY_transform_instance_create(SFY_transform_type_translate, _plane_origin))
-                #end    
-            #end
-        #end
+        #end    
     #end
     
     _cur_object_transform
