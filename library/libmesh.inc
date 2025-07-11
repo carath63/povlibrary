@@ -20,6 +20,7 @@
 //-----------------------------------------------------------------------------
 // Standard Includes
 //
+#include "transforms.inc"
 
 // End Standard Includes
 //-----------------------------------------------------------------------------
@@ -27,6 +28,7 @@
 //-----------------------------------------------------------------------------
 // My Includes
 //
+#include "libstringify.inc"
 
 // End My Includes
 //-----------------------------------------------------------------------------
@@ -339,6 +341,7 @@
         #ifdef (Mesh2.flat_faces)
             #ifdef (Mesh2.smooth_faces)
             normal_indices {
+                Mesh2.smooth_count,
                 #for (i, 0, Mesh2.smooth_count-1, 1)
                     #if (i < Mesh2.smooth_count-1)
                     Mesh2.smooth_faces[i].vindices,
@@ -355,6 +358,135 @@
 #end
 
 // End Mesh2_generate
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh2_write(Mesh2,optional VarName)
+//
+// Writes the SDL for a mesh2 object from the given Mesh2 dictionary to a
+// file opened with SFY_file_open()
+//
+#macro Mesh2_write(Mesh2,optional VarName)
+    #ifdef(VarName)
+        #write(SFY_file_handle, "#declare ", VarName, " = ")
+    #end
+    
+    #write(SFY_file_handle, "mesh2 {\n")
+    
+    #write(SFY_file_handle, "    vertex_vectors {\n")
+    #write(SFY_file_handle, "        ", str(Mesh2.vcount, 0, 0), ",")
+    #for (i, 0, Mesh2.vcount-1, 1)
+        #if (mod(i, 10) = 0)
+            #write(SFY_file_handle, "\n        ")
+        #end    
+        #write(SFY_file_handle, Mesh2.vertices[i].point)
+        #if (i < Mesh2.vcount-1)
+            #write(SFY_file_handle, ",")
+        #end
+    #end
+    #write(SFY_file_handle, "\n    }\n")
+    
+    #ifdef (Mesh2.smooth_faces)
+        #write(SFY_file_handle, "    normal_vectors {\n")
+        #write(SFY_file_handle, "        ", str(Mesh2.vcount, 0, 0), ",")
+        #for (i, 0, Mesh2.vcount-1, 1)
+            #if (mod(i, 10) = 0)
+                #write(SFY_file_handle, "\n        ")
+            #end    
+            #ifdef (Mesh2.vertices[i].norm)
+                #local _nrm = Mesh2.vertices[i].norm;
+            #else
+                #local _nrm = Mesh2.defaultNormal;
+            #end
+            #write(SFY_file_handle, _nrm)
+            #if (i < Mesh2.vcount-1)
+                #write(SFY_file_handle, ",")
+            #end
+        #end
+        #write(SFY_file_handle, "\n    }\n")
+    #end
+    
+    #if (Mesh2.uvmapping)
+        #write(SFY_file_handle, "    uv_vectors {\n")
+        #write(SFY_file_handle, "        ", str(Mesh2.vcount, 0, 0), ",")
+        #for (i, 0, Mesh2.vcount-1, 1)
+            #if (mod(i, 10) = 0)
+                #write(SFY_file_handle, "\n        ")
+            #end    
+            #ifdef (Mesh2.vertices[i].uv)
+                #local _vuv = Mesh2.vertices[i].uv;
+            #else
+                #local _vuv = <0,0>;
+            #end
+            #write(SFY_file_handle, _vuv)
+            #if (i < Mesh2.vcount-1)
+                #write(SFY_file_handle, ",")
+            #end
+        #end
+        #write(SFY_file_handle, "\n    }\n")
+    #end
+    
+    #local _num_faces   = 0;
+    #ifdef (Mesh2.smooth_faces)
+        #local _num_faces   = _num_faces + Mesh2.smooth_count;
+    #end
+    #ifdef (Mesh2.flat_faces)
+        #local _num_faces   = _num_faces + Mesh2.flat_count;
+    #end
+            
+    #write(SFY_file_handle, "    face_indices {\n")
+    #write(SFY_file_handle, "        ", str(_num_faces, 0, 0), ",")
+    #ifdef (Mesh2.smooth_faces)
+        #for (i, 0, Mesh2.smooth_count-1, 1)
+            #if (mod(i, 10) = 0)
+                #write(SFY_file_handle, "\n        ")
+            #end
+            #write(SFY_file_handle, Mesh2.smooth_faces[i].vindices)    
+            #if (i < _num_faces-1)
+                #write(SFY_file_handle, ",")
+            #end    
+        #end
+        #write(SFY_file_handle, "\n        ")
+    #end
+    #ifdef (Mesh2.flat_faces)
+        #for (i, 0, Mesh2.flat_count-1, 1)
+            #if (mod(i, 10) = 0)
+                #write(SFY_file_handle, "\n        ")
+            #end
+            #write(SFY_file_handle, Mesh2.flat_faces[i].vindices)
+            #if (i < _num_faces-1)
+                #write(SFY_file_handle, ",")
+            #end    
+        #end
+    #end
+    #write(SFY_file_handle, "\n")
+    #write(SFY_file_handle, "    }\n")
+    
+    #write(SFY_file_handle, "}\n")                                       
+
+    #ifdef (Mesh2.flat_faces)
+        #ifdef (Mesh2.smooth_faces)
+        #write(SFY_file_handle, "    normal_indices {\n")
+        #write(SFY_file_handle, "        ", str(Mesh2.smooth_count, 0, 0), ",")
+        #for (i, 0, Mesh2.smooth_count-1, 1)
+            #if (mod(i, 10) = 0)
+                #write(SFY_file_handle, "\n        ")
+            #end
+            #write(SFY_file_handle, Mesh2.smooth_faces[i].vindices)
+            #if (i < Mesh2.smooth_count-1)
+                #write(SFY_file_handle, ",")
+            #end
+        #end
+        #write(SFY_file_handle, "    }\n")
+        #end
+    #end
+    
+    #ifdef(VarName)
+        #write(SFY_file_handle, ";\n")
+    #end    
+#end
+
+// End Mesh2_write
 //-----------------------------------------------------------------------------
 
 
@@ -638,6 +770,386 @@
 
 
 // End 3D Grid Meshes
+//=============================================================================
+
+//=============================================================================
+// Mesh_triangle Utilities
+//
+
+//-----------------------------------------------------------------------------
+// Mesh_triangle_create(Points)
+//
+//      Creates a dictionary {} object consisting of a set of 3 points and
+// an automatcally generate center in the XZ plane
+//
+
+#macro Mesh_triangle_create(Points)
+    #local _triangle    = dictionary {
+        .verts:     Points,
+        .center:    (Points[0] + Points[1] + Points[2])/3
+    }
+    ;
+    
+    _triangle    
+#end 
+
+// End Mesh_triangle_create
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_triangle_transform(Triangle,Transform)
+//
+// Creates a new Mesh_triangle by transforming its vertices using the given
+// Transform
+//
+#macro Mesh_triangle_transform(Triangle,Transform)
+    #local _tpoints = array[3];
+    #for (i, 0, 2, 1)
+        #local _tpoints[i]  = vtransform(Triangle.verts[i],Transform);
+    #end                                                              
+    #local _mt  = Mesh_triangle_create(_tpoints);
+    
+    _mt
+#end
+
+// End Mesh_triangle_transform
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_triangle_dump(Triangle,IndentStr)
+//
+//  Writes a triangle dictionary to the debug stream at the given indent level
+//
+#macro Mesh_triangle_dump(Triangle,IndentStr)
+    #debug concat(IndentStr,"dictionary {\n") 
+    #debug concat(IndentStr,"    .verts:      array[3]{\n")
+    #for (k, 0, 2, 1)
+    #debug concat(IndentStr,"        <", vstr(3, Triangle.verts[k], ",", 0, 6), ">,\n")
+    #end
+    #debug concat(IndentStr,"    },\n")
+    #debug concat(IndentStr,"    .center:     <", vstr(3, Triangle.center, ",", 0, 6), ">\n")
+    #debug concat(IndentStr,"},\n")
+#end
+
+// End Mesh_triangle_dump
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_triangle_write(Triangle,IndentStr)
+//
+//  Writes a triangle dictionary to the debug stream at the given indent level
+//
+#macro Mesh_triangle_write(Triangle,IndentStr)
+    #write(SFY_file_handle,IndentStr,"dictionary {\n") 
+    #write(SFY_file_handle,IndentStr,"    .verts:      array[3]{\n")
+    #for (k, 0, 2, 1)
+    #write(SFY_file_handle,IndentStr,"        ", Triangle.verts[k], ",\n")
+    #end
+    #write(SFY_file_handle,IndentStr,"    },\n")
+    #write(SFY_file_handle,IndentStr,"    .center:     ", Triangle.center, "\n")
+    #write(SFY_file_handle,IndentStr,"},\n")
+#end
+
+// End Mesh_triangle_write
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_triangle_set_create()
+// 
+#macro Mesh_triangle_set_create()
+    #local _set = dictionary {
+        .num_triangles: 0,
+        .triangles: array
+    }
+    ;
+    
+    _set
+#end
+
+// End Mesh_triangle_set_create
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_triangle_set_add(Set,Triangle)
+//
+#macro Mesh_triangle_set_add(Set,Triangle)
+    #local Set.triangles[Set.num_triangles] = Triangle;
+    #local Set.num_triangles                = Set.num_triangles + 1;
+#end
+
+// End Mesh_triangle_set_add
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_triangle_set_dump(Set,IndentStr)
+//
+#macro Mesh_triangle_set_dump(Set,IndentStr)
+    #debug concat(IndentStr,"dictionary {\n")
+    #debug concat(IndentStr,"    .num_triangles:    ", str(Set.num_triangles, 0, 0), ",\n")
+    #if (Set.num_triangles > 0)
+        #debug concat(IndentStr, "    .triangles:   array[", str(Set.num_triangles, 0, 0), "]{\n")
+        #local _indent  = concat(IndentStr, "        ");
+        #for (i, 0, Set.num_triangles-1, 1)
+            Mesh_triangle_dump(Set.triangles[i],_indent)
+        #end
+        #debug concat(IndentStr, "    }\n")
+    #else
+        #debug concat(IndentStr, "    .triangles:   array\n")
+    #end
+    #debug concat(IndentStr,"}\n"
+#end
+
+// End Mesh_triangle_set_dump
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_triangle_set_write(Set,IndentStr)
+//
+#macro Mesh_triangle_set_write(Set,IndentStr)
+    #write(SFY_file_handle, IndentStr, "dictionary {\n")
+    #write(SFY_file_handle, IndentStr,"    .num_triangles:    ", str(Set.num_triangles, 0, 0), ",\n")
+    #if (Set.num_triangles > 0)
+        #write(SFY_file_handle, IndentStr, "    .triangles:   array[", str(Set.num_triangles, 0, 0), "]{\n")
+        #local _indent  = concat(IndentStr, "        ");
+        #for (i, 0, Set.num_triangles-1, 1)
+            Mesh_triangle_write(Set.triangles[i],_indent)
+        #end
+        #write(SFY_file_handle, IndentStr, "    }\n")
+    #else
+        #write(SFY_file_handle, IndentStr, "    .triangles:   array\n")
+    #end
+    #write(SFY_file_handle, IndentStr,"}\n")
+#end
+
+// End Mesh_triangle_set_write
+//-----------------------------------------------------------------------------
+
+// End Mesh_triangle Utilities
+//=============================================================================
+
+//=============================================================================
+// Mesh Triangle Surface Generation
+//
+// These are macros for generating Mesh_triangle_sets in various ways by
+// scanning an object from the top or bottom (y/-y) directions along the
+// bounding box in the XZ plane.
+//
+
+//-----------------------------------------------------------------------------
+// Mesh_bb_create(LBounds,UBounds)
+//
+#macro Mesh_bb_create(LBounds,UBounds)
+    #local _bb  = dictionary {
+        .lbounds:   LBounds,
+        .ubounds:   UBounds,
+        .center:    (LBounds + UBounds)/2;
+        .bbsize:    (UBounds - LBounds)
+    }
+    ;
+    
+    _bb
+#end
+
+// End Mesh_bb_create
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_bb_subdivide(BB,DimensionSplits)
+//
+#macro Mesh_bb_subdivide(BB,DimensionSplits)
+    #local _splits  = DimensionSplits*<1,1,1>;
+    #local _xdivs   = max(1, _splits.x);
+    #local _ydivs   = max(1, _splits.y);
+    #local _zdivs   = max(1, _splits.z);
+    
+    #local _result  = array[_xdivs*_ydivs*_zdivs];
+    #local _idx     = 0;
+    #for (_x, 0, _xdivs-1, 1)
+        #for (_y, 0, _ydivs-1, 1)
+            #for (_z, 0, _zdivs-1, 1)
+                #local _lb  = <BB.lbounds.x + _x*(BB.bbsize.x/_xdivs), BB.lbounds.y + _y*(BB.bbsize.y/_ydivs), BB.lbounds.z + _z*(BB.bbsize.z/_zdivs)>;
+                #local _ub  = <BB.lbounds.x + (_x+1)*(BB.bbsize.x/_xdivs), BB.lbounds.y + (_y+1)*(BB.bbsize.y/_ydivs), BB.lbounds.z + (_z+1)*(BB.bbsize.z/_zdivs)>;
+                #local _result[_idx]    = Mesh_bb_create(_lb,_ub);
+                #local _idx             = _idx + 1;
+            #end
+        #end
+    #end
+    
+    _result
+#end
+
+// End Mesh_bb_subdivide
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_triangle_hbb_create(Level,NumSubLevels,BB)
+//
+//      Creates a dictionary{} representing the root of a tree with NumLevels-1
+// children, all with empty triangle sets
+//
+#macro Mesh_triangle_hbb_create(Level,NumSubLevels,BB) 
+    #local _tset    = Mesh_triangle_set_create();
+    
+    #local _hbb = dictionary {
+        .level:     Level,
+        .bb:        BB,
+        .num_children:  0,
+        .children:      array,
+        .triangle_set:  _tset
+    }
+    ;
+    
+    #if (NumSubLevels > 0)
+        #local _sub_bbs = Mesh_bb_subdivide(BB,<2,1,2>);
+        #for (i, 0, 3, 1)
+            Mesh_triangle_hbb_add_child(Mesh_triangle_hbb_create(Level+1,NumSubLevels-1,_sub_bbs[i])
+        #end
+    #end
+    
+    _hbb
+#end
+
+// End Mesh_triangle_hbb_create
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_triangle_hbb_add_child(HBB,ChildHBB)
+//
+#macro Mesh_triangle_hbb_add_child(HBB,ChildHBB)
+    #local HBB.children[HBB.num_children]   = ChildHBB;
+    #local HBB.num_children                 = HBB.num_children + 1;
+#end
+
+// End Mesh_triangle_hbb_add_child
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_triangle_hbb_object_generate_triangles(HBB,Object,ScanDir)
+//
+#macro Mesh_triangle_hbb_object_generate_triangles(HBB,Object,ScanDir)
+    #local _scan_res    = #ifdef (Mesh_triangle_hbb_scan_resolution) Mesh_triangle_hbb_scan_resolution; #else 0.1; #end
+    #local _scan_size   = _scan_res * vlength(HBB.bb.bbsize);
+    
+    // Generate triangles for this HBB's bounding box
+    //
+    #if (ScanDir > 0)
+        #local _scan_dir    = -y;
+        #local _scan_height = HBB.bb.ubounds.y + 1;
+    #else
+        #local _scan_dir    = y;
+        #local _scan_height = HBB.bb.lbounds.y - 1;
+    #end
+    
+    // Find a location for the center point that projects onto the object
+    //
+    
+    #local _center_xz   = <1,0,1> * HBB.bb.center;
+    #local _max_r       = vlength(<1,0,1>*HBB.bb.bbsize)/2;
+    #local _cur_r       = 0;
+    #local _nrm         = <0,0,0>;
+    #local _center_pt   = trace(Object, _center_xz + y*_scan_height, _scan_dir, _nrm);
+    #if (vlength(_nrm) = 0)
+        #local _cur_r   = _cur_r + _scan_size;
+        #while (_cur_r <= _max_r & vlength(_nrm) = 0)
+            #local _cur_a   = 0;
+            #local _delta_a = 360/(2*pi*_cur_r/_scan_size);
+            #while (_cur_a < 360 & vlength(_nrm) = 0)
+                #local _center_xz   = vrotate(<0, 0, _cur_r>, <0, _cur_a, 0>);
+                #local _center_pt   = trace(Object, _center_xz + y*_scan_height, _scan_dir, _nrm);
+            #end
+        #end
+    #end    
+    
+    // If we find a center point, we can proceed with finding the vertices
+    // for the corners of the bounding box, then generating up to 4 triangles,
+    // and subdividing the bounding box to find child triangles.  Otherwise,
+    // no triangles are added for the parent bb, and no children are generated
+    // as they will not find a center point either.
+    //
+    // We do not worry, at this point, whether the line segment from each
+    // of the corner vertices is completely contained within the object.  That
+    // is probably too time-consuming for the added value, but we can explore it
+    // later.
+    #if (vlength(_nrm) > 0)
+        #local _vertices    = array[4] {
+            <HBB.bb.lbounds.x, 0, HBB.bb.lbounds.z>,
+            <HBB.bb.ubounds.x, 0, HBB.bb.lbounds.z>,
+            <HBB.bb.ubounds.x, 0, HBB.bb.ubounds.z>,
+            <HBB.bb.lbounds.x, 0, HBB.bb.ubounds.z>
+        }
+        ;
+        #for (i, 0, 3, 1)
+            // Find a location for the vertex that projects onto the object
+            // from the given location.
+            //
+            #local _vert_xz = <1,0,1>*_vertices[i];
+            #local _max_d   = vlength(_vert_xz - <1,0,1>*_center_pt);
+            #local _cur_d   = 0;
+            #local _nrm     = <0,0,0>;
+            #local _vert_pt = trace(Object, _vert_xz + y*_scan_height, _scan_dir, _nrm);
+            #if (vlength(_nrm) = 0)
+                #local _ddir    = vnormalize(<1,0,1>*_center_pt - _vert_xz);
+                #while (_cur_d <= _max_d & vlength(_nrm) = 0)
+                    #local _vert2_xz    = _vert_xz + _ddir*_cur_d;
+                    #local _vert_pt     = trace(Object, _vert2_xz + y*_scan_height, _scan_dir, _nrm);
+                    #if (vlength(_nrm) = 0)
+                        #local _cur_d   = _cur_d + _scan_size;
+                    #end    
+                #end
+            #end
+            #if (vlength(_nrm) = 0)
+                #local _vertices[i] = _center_pt;
+            #else
+                #local _vertices[i] = _vert_pt;    
+            #end    
+        #end
+        
+        // Compute and validate the triangle from the CenterPoint to vertex[i], to vertex[mod(i+1,4)]
+        #for (i, 0, 3, 1)
+            #local _tpoints = array[3] {
+                _center_pt, _vertices[i], _vertices[mod(i+1,4)]
+            }
+            ;
+            #if (vlength(_tpoints[0] - _tpoints[1]) > 0 & vlength(_tpoints[1] - _tpoints[2]) > 0 & vlength(_tpoints[2] - _tpoints[0]) > 0)
+                Mesh_triangle_set_add(HBB.triangle_set, Mesh_triangle_create(_tpoints))
+            #end
+        #end
+        
+        #if (HBB.num_children > 0 & HBB.triangle_set.num_triangls > 0)
+            #for (i, 0, HBB.num_children - 1, 1)
+                Mesh_triangle_hbb_object_generate_triangles(HBB.children[i],Object,ScanDir)
+            #end
+        #end
+    #end
+#end
+
+// End Mesh_triangle_hbb_object_generate_triangles
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_triangle_hbb_object_generate(Object,NumLevels,ScanDir)
+//
+//      Creates a new Mesh_triangle_hbb starting with 4 triangles (max) for the bounding
+// box of the object, and then recursively subdividing that bounding box NumLevels-1
+// times and generating triangles for the sub-levels.  The triangles are computed
+// scanning the object at the vertices of the bounding box from the given ScanDir,
+// (-1/+1)*y.  If the ray doesn't intersect the object, the vertex is moved towards
+// the center of the bounding box (stopping at the center and failing to create
+// a triangle.
+//
+#macro Mesh_triangle_hbb_object_generate(Object,NumLevels,ScanDir)
+    #local _root_bb = Mesh_bb_create(min_extent(Object),max_extent(Object));
+    #local _root    = Mesh_triangle_hbb_create(0,NumLevels-1,_root_bb);
+    
+    Mesh_triangle_hbb_object_generate_triangles(_root,Object,ScanDir)
+    
+    _root
+#end
+
+// End Mesh_triangle_hbb_object_generate
+//-----------------------------------------------------------------------------
+
+// End Mesh Triangle Surface Generation
 //=============================================================================
 
 #version Libmesh_Inc_Temp;
