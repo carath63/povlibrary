@@ -881,6 +881,18 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+// Mesh_triangle_set_append(TriangleSet,TriangleSet2) 
+//
+#macro Mesh_triangle_set_append(TriangleSet,TriangleSet2)
+    #for (i, 0, TriangleSet2.num_triangles-1, 1)
+        Mesh_triangle_set_add(TriangleSet, TriangleSet2.triangles[i])
+    #end
+#end
+
+// End Mesh_triangle_set_append
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // Mesh_triangle_set_dump(Set,IndentStr)
 //
 #macro Mesh_triangle_set_dump(Set,IndentStr)
@@ -896,7 +908,7 @@
     #else
         #debug concat(IndentStr, "    .triangles:   array\n")
     #end
-    #debug concat(IndentStr,"}\n"
+    #debug concat(IndentStr,"}\n")
 #end
 
 // End Mesh_triangle_set_dump
@@ -942,7 +954,7 @@
     #local _bb  = dictionary {
         .lbounds:   LBounds,
         .ubounds:   UBounds,
-        .center:    (LBounds + UBounds)/2;
+        .center:    (LBounds + UBounds)/2,
         .bbsize:    (UBounds - LBounds)
     }
     ;
@@ -951,6 +963,21 @@
 #end
 
 // End Mesh_bb_create
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_bb_dump(BB)
+//
+#macro Mesh_bb_dump(BB)
+    #debug concat("dictionary {\n")
+    #debug concat("    .lbounds:    ", vstr(3, BB.lbounds, ",", 0, 6), ",\n")
+    #debug concat("    .ubounds:    ", vstr(3, BB.ubounds, ",", 0, 6), ",\n")
+    #debug concat("    .center:    ", vstr(3, BB.center, ",", 0, 6), ",\n")
+    #debug concat("    .bbsize:    ", vstr(3, BB.bbsize, ",", 0, 6), "\n")
+    #debug concat("}\n")
+#end
+
+// End Mesh_bb_dump
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
@@ -991,8 +1018,9 @@
     #local _tset    = Mesh_triangle_set_create();
     
     #local _hbb = dictionary {
-        .level:     Level,
-        .bb:        BB,
+        .level:         Level,
+        .sub_levels:    NumSubLevels,
+        .bb:            BB,
         .num_children:  0,
         .children:      array,
         .triangle_set:  _tset
@@ -1002,7 +1030,7 @@
     #if (NumSubLevels > 0)
         #local _sub_bbs = Mesh_bb_subdivide(BB,<2,1,2>);
         #for (i, 0, 3, 1)
-            Mesh_triangle_hbb_add_child(Mesh_triangle_hbb_create(Level+1,NumSubLevels-1,_sub_bbs[i])
+            Mesh_triangle_hbb_add_child(_hbb,Mesh_triangle_hbb_create(Level+1,NumSubLevels-1,_sub_bbs[i]))
         #end
     #end
     
@@ -1027,8 +1055,13 @@
 // Mesh_triangle_hbb_object_generate_triangles(HBB,Object,ScanDir)
 //
 #macro Mesh_triangle_hbb_object_generate_triangles(HBB,Object,ScanDir)
-    #local _scan_res    = #ifdef (Mesh_triangle_hbb_scan_resolution) Mesh_triangle_hbb_scan_resolution; #else 0.1; #end
+    #local _debug       = #ifdef (Mesh_triangle_hbb_debug) Mesh_triangle_hbb_debug; #else 0; #end
+    #local _scan_res    = #ifdef (Mesh_triangle_hbb_scan_resolution) Mesh_triangle_hbb_scan_resolution; #else 0.01; #end
     #local _scan_size   = _scan_res * vlength(HBB.bb.bbsize);
+    
+    #if (_debug > 0)
+        Mesh_bb_dump(HBB.bb)
+    #end    
     
     // Generate triangles for this HBB's bounding box
     //
@@ -1058,7 +1091,7 @@
                 #local _center_pt   = trace(Object, _center_xz + y*_scan_height, _scan_dir, _nrm);
             #end
         #end
-    #end    
+    #end
     
     // If we find a center point, we can proceed with finding the vertices
     // for the corners of the bounding box, then generating up to 4 triangles,
@@ -1071,6 +1104,7 @@
     // is probably too time-consuming for the added value, but we can explore it
     // later.
     #if (vlength(_nrm) > 0)
+        #if (_debug > 1) #debug concat("_center_pt=<", vstr(3, _center_pt, ",", 0, 6), ">\n") #end
         #local _vertices    = array[4] {
             <HBB.bb.lbounds.x, 0, HBB.bb.lbounds.z>,
             <HBB.bb.ubounds.x, 0, HBB.bb.lbounds.z>,
@@ -1100,7 +1134,8 @@
             #if (vlength(_nrm) = 0)
                 #local _vertices[i] = _center_pt;
             #else
-                #local _vertices[i] = _vert_pt;    
+                #local _vertices[i] = _vert_pt;
+                #if (_debug > 1) #debug concat("_vertices[", str(i, 0, 0), "]=<", vstr(3, _vertices[i], ",", 0, 6), ">\n") #end    
             #end    
         #end
         
@@ -1112,14 +1147,17 @@
             ;
             #if (vlength(_tpoints[0] - _tpoints[1]) > 0 & vlength(_tpoints[1] - _tpoints[2]) > 0 & vlength(_tpoints[2] - _tpoints[0]) > 0)
                 Mesh_triangle_set_add(HBB.triangle_set, Mesh_triangle_create(_tpoints))
+                #if (_debug > 2) Mesh_triangle_dump(HBB.triangle_set.triangles[HBB.triangle_set.num_triangles-1],"") #end
             #end
         #end
         
-        #if (HBB.num_children > 0 & HBB.triangle_set.num_triangls > 0)
+        #if (HBB.num_children > 0 & HBB.triangle_set.num_triangles > 0)
             #for (i, 0, HBB.num_children - 1, 1)
                 Mesh_triangle_hbb_object_generate_triangles(HBB.children[i],Object,ScanDir)
             #end
         #end
+    #else
+        #warning concat("Mesh_triangle_hbb_object_generate_triangles: No center found\n")    
     #end
 #end
 
@@ -1147,6 +1185,54 @@
 #end
 
 // End Mesh_triangle_hbb_object_generate
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_triangle_hbb_get_leaf_triangles(HBB)
+//
+#macro Mesh_triangle_hbb_add_leaf_triangles(HBB,TriangleSet)
+    #if (HBB.num_children = 0)
+        #Mesh_triangle_set_append(TriangleSet, HBB.triangle_set)
+    #else
+        #for (i, 0, HBB.num_children-1, 1)
+            Mesh_triangle_hbb_add_leaf_triangles(HBB.children[i],TriangleSet)
+        #end
+    #end
+#end
+
+#macro Mesh_triangle_hbb_get_leaf_triangles(HBB)
+    #local _triangle_set    = Mesh_triangle_set_create();
+    Mesh_triangle_hbb_add_leaf_triangles(HBB,_triangle_set)
+    
+    _triangle_set
+#end
+
+// End Mesh_triangle_hbb_get_leaf_triangles
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_triangle_hbb_get_ordered_triangles(HBB)
+//
+#macro Mesh_triangle_hbb_add_level_n_triangles(HBB,TriangleSet,Level)
+    #if (HBB.level = Level)
+        Mesh_triangle_set_append(TriangleSet, HBB.triangle_set)
+    #elseif (HBB.level < Level & HBB.num_children > 0)
+        #for (i, 0, HBB.num_children - 1, 1)
+            Mesh_triangle_hbb_add_level_n_triangles(HBB.children[i],TriangleSet,Level)
+        #end
+    #end
+#end
+
+#macro Mesh_triangle_hbb_get_ordered_triangles(HBB)
+    #local _triangle_set    = Mesh_triangle_set_create();
+    
+    #for (i, 0, HBB.sub_levels, 1)
+        Mesh_triangle_hbb_add_level_n_triangles(HBB,_triangle_set,i)
+    #end
+    _triangle_set
+#end
+
+// End Mesh_triangle_hbb_get_ordered_triangles
 //-----------------------------------------------------------------------------
 
 // End Mesh Triangle Surface Generation
