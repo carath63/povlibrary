@@ -269,6 +269,56 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+// SFY_transform_dict_dump(Transform,optional indent)
+//
+#macro SFY_transform_dict_dump(Transform,optional indent)
+    #local indent       = #ifdef(indent) indent; #else 0; #end
+    #local _indent_str  = SFY_indent(indent);
+    #local _indent2_str = SFY_indent(indent+4);
+    #local _indent3_str = SFY_indent(indent+8);
+    
+    #debug concat( _indent_str, "dictionary {\n")
+    #debug concat( _indent2_str, ".num_transforms: ", str(Transform.num_transforms,0,0), ",\n")
+    #debug concat( _indent2_str, ".transforms: array[", str(Transform.num_transforms,0,0), "]")
+    #if (Transform.num_transforms > 0)
+        #debug concat( "{\n")
+        #for (i, 0, Transform.num_transforms-1, 1)
+            #debug concat(_indent3_str, "dictionary {\n")
+            #debug concat(_indent3_str, "    .itype: ", str(Transform.transforms[i].itype,0,0), ",\n")
+            #switch(Transform.transforms[i].itype)
+                #case(SFY_transform_type_translate)
+                #case(SFY_transform_type_rotate)
+                #case(SFY_transform_type_scale)
+                    #debug concat(_indent3_str, "    .ivector: <", vstr(3,Transform.transforms[i].ivector,",", 0, 6), ">\n")
+                #break
+                #case(SFY_transform_type_matrix)
+                    #debug concat(_indent3_str, "    .mvals: <")
+                    #for (j, 0, 10, 1)
+                        #debug concat(str(Transform.transforms[i].mvals[j], 0, 6), ",")
+                    #end                                                                
+                    #debug concat(str(Transform.transforms[i].mvals[11],0,6), ">\n")
+                #break     
+            #end
+            #debug concat(_indent3_str, "}\n")
+            
+            #if (i+1 < Transform.num_transforms)
+                #debug concat( ",\n")
+            #else
+                #debug concat( "\n")
+            #end        
+        #end
+        #debug concat( _indent2_str, "},\n")
+    #else
+        #debug concat( ",\n")
+    #end
+    #debug concat( _indent_str, "}\n")
+    
+#end
+
+// End SFY_transform_dict_dump
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // SFY_transform_dict_write(Transform,optional indent)
 //
 #macro SFY_transform_dict_write(Transform,optional indent)

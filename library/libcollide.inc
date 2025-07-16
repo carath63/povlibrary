@@ -780,6 +780,124 @@
 // End Col_rest_map_on_surface_transform
 //=============================================================================
 
+//=============================================================================
+// Col_rest_triangle_set_on_surface_transform(TriangleSet,Surface,optional XZLocation,optional Floor)
+//
+//      Creates a new SFY_transform that attempts to rest the given TriangleSet on the given Surface such that all of the
+// vertices of all triangles lie on or above the surface.                                                                
+//
+
+// Notes:
+// The triangle set should represent the base of the object if it were resting on a flat surface at y=0.  If it has
+// a bumpy bottom, there may be points that extend below the y=0 plane and they will be taken into account
+//
+// The goal is to compute a planar transformation to apply to the object such that no triangle points representing
+// the base dip below the height of the surface.  To do this:
+//
+// Initialize the current plane to: Normal=y, origin=<0,0,0>
+// Keep repeating this process until no triangles have points below the surface, or the maximum iterations is reached
+//  for each Triangle:
+//      Transform the Triangle using the current planar transform
+//      Transform the Triangle projected onto the y=0 plane using the current planar transform; these are the current plane points
+//      Repeat until all vertices are above the surface or the maximum retries are reached:
+//          for each Vertex of the transformed Triangle:
+//              Project the Vertex onto the surface
+//              If the Vertex.y < surface.y:
+//                  Compute how much the the vertex would need to be raised, (i.e. surface.y - Vertex.y) and update the matching transformed projected Vertex by adding that value to it
+//                  Create a new planar transform based on the current set of points
+//                  Retry the triangle
+//              Else
+//                  Continue to the next Vertex 
+//
+#macro Col_rest_triangle_set_on_surface_transform(TriangleSet,Surface,optional XZLocation,optional Floor)
+    #local _xz_loc          = #ifdef(XZLocation) <1,0,1>*XZLocation; #else <0,0,0>; #end 
+    #local _floor           = #ifdef(Floor) Floor; #else -1e6; #end
+    #local _dlevel          = #ifdef(Col_rest_triangle_set_on_surface_debug) Col_rest_triangle_set_on_surface_debug; #else 0; #end
+    #local _max_attempts    = #ifdef(Col_rest_triangle_set_on_surface_max_attempts) max(1,Col_rest_triangle_set_on_surface_max_attempts); #else 10; #end
+    #local _drop_height     = max_extent(Surface).y + 10;
+    
+    #macro _get_surface_points(Triangle)
+        #local _ps   = array[3];
+        #for (k, 0, 2, 1)
+            #local _nrm = <0,0,0>;
+            #local _hit = trace(Surface, Triangle.verts[k]*<1,0,1> + y*_drop_height, -y, _nrm);
+            #if (vlength(_nrm) = 0)
+                #local _hit = Triangle.verts[k]*<1,0,1> + y*_floor;
+            #end 
+            #local _ps[k]    = _hit;   
+        #end
+        
+        _ps
+    #end
+    
+    #local _object_plane            = Mesh_plane_create(y,<0,0,0>);
+    #local _object_sfy_transform    = SFY_transform_create(SFY_transform_instance_create(SFY_transform_type_translate, _xz_loc));
+    #local _object_transform        = transform { SFY_transform_sdl(_object_sfy_transform) }
+    #local _min_y_trans             = 0;
+    #local _attempts                = 0;
+    
+    #local _keep_adjusting  = true;
+    #while (_keep_adjusting)
+        #local _cur_triangle        = 0;
+        #local _attempts            = _attempts + 1;
+        #local _num_updates         = 0;
+        #while (_cur_triangle < TriangleSet.num_triangles)
+            #local _trans_triangle      = Mesh_triangle_transform(TriangleSet.triangles[_cur_triangle],_object_transform);
+            #local _trans_projection    = Mesh_triangle_transform(Mesh_triangle_project(_object_plane,TriangleSet.triangles[_cur_triangle]),_object_transform);
+            #local _trans_center        = TriangleSet.triangles[_cur_triangle].center*<1,0,1>;
+            #local _surface_pts         = _get_surface_points(_trans_triangle);
+            #local _triangle_updates    = 0;
+            #for (i, 0, 2, 1)
+                #if (_surface_pts[i].y > _trans_triangle.verts[i].y)
+                    #local _delta                       = _surface_pts[i].y - _trans_triangle.verts[i].y;
+                    Mesh_triangle_update_vertex(_trans_projection,i,_trans_projection.verts[i] + y*_delta)
+                    #local _new_plane                   = Mesh_plane_create_triangle(_trans_projection);
+                    #if (_new_plane.porig.y > _min_y_trans)
+                        #local _min_y_trans = _new_plane.porig.y;
+                    #elseif (_new_plane.porig.y < _min_y_trans)
+                        #local _new_plane = Mesh_plane_create(_new_plane.pnorm,<1,0,1>*_new_plane.porig + y*_min_y_trans);
+                    #end 
+                    #if (_dlevel > 2)
+                        #debug concat("_trans_projection: \n")
+                        Mesh_triangle_dump(_trans_projection, "    ")
+                        #debug concat("_new_plane generated: \n")
+                        Mesh_plane_dump(_new_plane, "    ")
+                    #end
+                    #local _object_sfy_transform        = SFY_transform_create(SFY_transform_instance_create(SFY_transform_type_translate, -_trans_center));
+                    SFY_transform_add_reorient_trans(_object_sfy_transform, y, _new_plane.pnorm)
+                    SFY_transform_add(_object_sfy_transform, SFY_transform_instance_create(SFY_transform_type_translate, _new_plane.porig))
+                    #local _object_transform            = transform { SFY_transform_sdl(_object_sfy_transform) }
+                    #local _trans_triangle              = Mesh_triangle_transform(TriangleSet.triangles[_cur_triangle],_object_transform);
+                    #local _trans_projection            = Mesh_triangle_transform(Mesh_triangle_project(_object_plane,TriangleSet.triangles[_cur_triangle]),_object_transform);
+                    #local _surface_pts                 = _get_surface_points(_trans_triangle);
+                    #local _num_updates                 = _num_updates + 1;
+                #end
+            #end
+            #local _cur_triangle    = _cur_triangle + 1;
+        #end
+        
+        #if (_dlevel > 1)
+            #debug concat("Col_rest_triangle_set_on_surface_transform: Attempt ", str(_attempts, 0, 0), " had ", str(_num_updates, 0, 0), " updates\n")
+        #end
+        
+        #if (_attempts >= _max_attempts | _num_updates = 0)
+            #if (_attempts >= _max_attempts)
+                #warning concat("Col_rest_triangle_set_on_surface_transform: reached ", str(_max_attempts, 0, 0), "; stopping\n")
+            #end    
+            #local _keep_adjusting  = false;
+        #end    
+    #end
+    
+    #if (_dlevel > 0)
+        #debug concat("Col_rest_triangle_set_on_surface_transform: Ran ", str(_attempts, 0, 0), " iterations\n")
+    #end
+    
+    _object_sfy_transform
+#end
+
+// End Col_rest_triangle_set_on_surface_transform
+//=============================================================================
+
 #version Libcollide_Inc_Temp;
 
 #end // ifndef (Libcollide_Inc_Temp)

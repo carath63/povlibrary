@@ -773,6 +773,74 @@
 //=============================================================================
 
 //=============================================================================
+// Mesh_plane Utilities
+//
+
+//-----------------------------------------------------------------------------
+// Mesh_plane_create(Normal,optional Origin)
+//
+#macro Mesh_plane_create(Normal,optional Origin)
+    #local _nrm     = vnormalize(Normal);
+    #local _orig    = #ifdef(Origin) Origin; #else <0,0,0>; #end
+    #local _plane   = dictionary {
+        .pnorm: _nrm,
+        .porig: _orig,
+        .pd:    vdot(_nrm,_orig)
+    }
+    ;
+    
+    _plane
+#end
+
+// End Mesh_plane_create
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_plane_create_triangle(Triangle)
+//
+#macro Mesh_plane_create_triangle(Triangle)
+    #local _nrm = vcross(Triangle.verts[2] - Triangle.verts[0], Triangle.verts[1] - Triangle.verts[0]);
+    #if (vlength(_nrm) > 0)
+        #local _plane   = Mesh_plane_create(_nrm,Triangle.center);
+    #else
+        #error concat("Mesh_plane_create_triangle: Invalid Triangle:\n")
+        Mesh_triangle_dump(Triangle,"    ")
+    #end                                                          
+    _plane
+#end
+
+// End Mesh_plane_create_triangle
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_plane_dump(Plane,IndentStr)
+//
+#macro Mesh_plane_dump(Plane,IndentStr)
+    #debug concat(IndentStr, "dictionary {\n")
+    #debug concat(IndentStr, "    .pnorm:    <", vstr(3,Plane.pnorm,",", 0, 6), ">,\n")
+    #debug concat(IndentStr, "    .porig:    <", vstr(3,Plane.porig,",", 0, 6), ">,\n")
+    #debug concat(IndentStr, "    .pd:       ", str(Plane.pd, 0, 6), "\n")
+    #debug concat(IndentStr, "}\n")
+#end
+
+// End Mesh_plane_dump
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_plane_project(Plane,Point)
+//
+#macro Mesh_plane_project(Plane,Point)
+    #local _k   = Plane.pd - vdot(Plane.pnorm,Point);
+    (Point + _k*Plane.pnorm) 
+#end
+
+// End Mesh_plane_project
+//-----------------------------------------------------------------------------
+
+// End Mesh_plane Utilities
+//=============================================================================
+
+//=============================================================================
 // Mesh_triangle Utilities
 //
 
@@ -797,6 +865,17 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+// Mesh_triangle_update_vertex(Triangle,VIndex,NewValue)
+//
+#macro Mesh_triangle_update_vertex(Triangle,VIndex,NewValue)
+    #local Triangle.verts[VIndex]   = NewValue;
+    #local Triangle.center          = (Triangle.verts[0] + Triangle.verts[1] + Triangle.verts[2])/3;
+#end
+
+// End Mesh_triangle_update_vertex
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // Mesh_triangle_transform(Triangle,Transform)
 //
 // Creates a new Mesh_triangle by transforming its vertices using the given
@@ -813,6 +892,22 @@
 #end
 
 // End Mesh_triangle_transform
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_triangle_project(Plane,Triangle)
+//
+#macro Mesh_triangle_project(Plane,Triangle)
+    #local _pts = array[3];
+    #for (i, 0, 2, 1)
+        #local _pts[i]  = Mesh_plane_project(Plane,Triangle.verts[i]);
+    #end                                                              
+    #local _t   = Mesh_triangle_create(_pts);
+    
+    _t
+#end
+
+// End Mesh_triangle_project
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
