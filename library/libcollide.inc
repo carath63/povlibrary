@@ -858,6 +858,8 @@
                         #local _new_plane = Mesh_plane_create(_new_plane.pnorm,<1,0,1>*_new_plane.porig + y*_min_y_trans);
                     #end 
                     #if (_dlevel > 2)
+                        #debug concat("Triange:\n")
+                        Mesh_triangle_dump(TriangleSet.triangles[_cur_triangle],"    ")
                         #debug concat("_trans_projection: \n")
                         Mesh_triangle_dump(_trans_projection, "    ")
                         #debug concat("_new_plane generated: \n")
