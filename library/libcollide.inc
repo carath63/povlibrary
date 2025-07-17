@@ -888,6 +888,47 @@
         #end    
     #end
     
+    // Make one last pass over the triangles of the object and find the 3 points that are closest to the surface.  If the distance
+    // of at least one of those 3 points is > 0, do one more adjustment to rest the surface on those points.
+    //
+    #macro _triangle_distance(Triangle)
+        #local _surface_points  = _get_surface_points(Triangle);
+        #local _min_dist        = max(0,Triangle.verts[0].y - _surface_points[0].y);
+        #for (i, 1, 2, 1)
+            #local _d   = max(0, Triangle.verts[i].y - _surface_points[i].y);
+            #if (_d < _min_dist)
+                #local _min_dist    = _d;
+            #end    
+        #end    
+        
+        _min_dist
+    #end
+    
+    #for (i, 0, TriangleSet.num_triangles-1, 1)
+        #local _trans_triangle      = Mesh_triangle_transform(TriangleSet.triangles[i],_object_transform);
+        #local _trans_projection    = Mesh_triangle_transform(Mesh_triangle_project(_object_plane,TriangleSet.triangles[i]),_object_transform);
+        #local _trans_center        = TriangleSet.triangles[i].center*<1,0,1>;
+        #local _triangle_d          = _triangle_distance(_trans_triangle);
+        #ifndef (_min_triangle)
+            #local _min_triangle        = _trans_triangle;
+            #local _min_projection      = _trans_projection;
+            #local _min_center          = _trans_center;
+            #local _min_distance        = _triangle_d;
+        #else
+            #if (_triangle_d < _min_distance)
+                #local _min_triangle    = _trans_triangle;
+                #local _min_projection  = _trans_projection;
+                #local _min_center      = _trans_center;
+                #local _min_distance    = _triangle_d;
+            #end    
+        #end
+    #end
+    
+    #if (_min_distance > 0)
+        #if (_dlevel > 0) #debug concat("Col_rest_triangle_set_on_surface_transform: Adjusting to rest on the surface: ", str(_min_distance, 0, 6), "\n") #end
+        SFY_transform_add(_object_sfy_transform, SFY_transform_instance_create(SFY_transform_type_translate, -y*_min_distance))
+    #end
+    
     #if (_dlevel > 0)
         #debug concat("Col_rest_triangle_set_on_surface_transform: Ran ", str(_attempts, 0, 0), " iterations\n")
     #end
