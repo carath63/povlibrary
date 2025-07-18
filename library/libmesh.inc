@@ -1234,7 +1234,30 @@
             #end    
         #end
         
+        // Compute and validate the triangles from the corners
+        //
+        #for (i, 0, 3, 1)
+            #local _tpoints = array[3] {
+                _vertices[i], _vertices[mod(i+1,4)], _vertices[mod(i+2,4)]
+            }
+            ;    
+            #if (vlength(_tpoints[0] - _tpoints[1]) > 0 & vlength(_tpoints[1] - _tpoints[2]) > 0 & vlength(_tpoints[2] - _tpoints[0]) > 0) 
+                // Check to make sure the normal for the plane projection of these points is in the positive y direction.
+                // if not, reorder _tpoints
+                //
+                #local _nrm = vcross(_tpoints[2]*<1,0,1> - _tpoints[0]*<1,0,1>, _tpoints[1]*<1,0,1> - _tpoints[0]*<1,0,1>);
+                #if (_nrm.y < 0)
+                    #local _tmp = _tpoints[2];
+                    #local _tpoints[2]  = _tpoints[1];
+                    #local _tpoints[1]  = _tmp;
+                #end
+                Mesh_triangle_set_add(HBB.triangle_set, Mesh_triangle_create(_tpoints))
+                #if (_debug > 2) Mesh_triangle_dump(HBB.triangle_set.triangles[HBB.triangle_set.num_triangles-1],"") #end
+            #end
+        #end
+        
         // Compute and validate the triangle from the CenterPoint to vertex[i], to vertex[mod(i+1,4)]
+        //
         #for (i, 0, 3, 1)
             #local _tpoints = array[3] {
                 _center_pt, _vertices[i], _vertices[mod(i+1,4)]
