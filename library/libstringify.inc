@@ -265,7 +265,45 @@
     #write (SFY_file_handle, _indent_str, "}\n")
 #end
 
-// End SFY_transform_sdl_string
+// End SFY_transform_sdl_write
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// SFY_transform_sdl_dump(Transform,optional indent)
+//
+#macro SFY_transform_sdl_dump(Transform,optional indent)
+    #local indent       = #ifdef(indent) indent; #else 0; #end
+    #local _indent_str  = SFY_indent(indent);
+    #local _indent2_str = SFY_indent(indent+4);
+    
+    #debug concat(_indent_str, "transform {\n")
+    #for (i, 0, Transform.num_transforms-1, 1)
+        #switch(Transform.transforms[i].itype)
+            #case(SFY_transform_type_translate)
+                #debug concat(_indent2_str, "translate <", vstr(3, Transform.transforms[i].ivector, ",", 0, 6), ">\n")
+            #break
+            #case(SFY_transform_type_rotate)
+                #debug concat(_indent2_str, "rotate <", vstr(3, Transform.transforms[i].ivector, ",", 0, 6), ">\n")
+            #break
+            #case(SFY_transform_type_scale)
+                #debug concat(_indent2_str, "scale <", vstr(3, Transform.transforms[i].ivector, ",", 0, 6), ">\n")
+            #break
+            #case(SFY_transform_type_matrix)
+                #debug concat(_indent2_str, "matrix <")
+                #for (j, 0, 10, 1)
+                    #debug concat(str(Transform.transforms[i].mvals[j], 0, 6), ",")
+                #end
+                #debug concat(str(Transform.transforms[i].mvals[11], 0, 6), ">\n")
+            #break
+            #else
+                #error concat("SFY_transform_sdl: Unknown transform type ", str(Transform.itype, 0, 0), "\n")
+            #break
+        #end
+    #end
+    #debug concat(_indent_str, "}\n")
+#end
+
+// End SFY_transform_sdl_dump
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
