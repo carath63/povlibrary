@@ -144,6 +144,39 @@
 //=============================================================================
 
 //=============================================================================
+// Angle computation macros
+//
+
+//-----------------------------------------------------------------------------
+// Angle_vec(V1,V2)
+//
+// Computes the angle in radians between two non-zero length vectors
+//
+#macro Angle_vec_nocheck(V1,V2)
+    #local _costheta    = vdot(V1,V2)/(vlength(V1)*vlength(V2));
+    #if (_costheta > 1)
+        #local _ang = 0;
+    #else
+        #local _ang = acos(_costheta);
+    #end
+    _ang            
+#end
+
+#macro Angle_vec(V1,V2)
+    #if (vlength(V1) = 0 | vlength(V2) = 0)
+        #error concat("Angle_vec: Cannot compute angle between <", vstr(3, V1, ",", 0, 3), "> and <", vstr(3, V2, ",", 0, 3), ">\n")
+    #end
+    Angle_vec_nocheck(V1,V2)    
+#end
+
+// End Angle_vec
+//-----------------------------------------------------------------------------
+
+
+// End Angle computation macros
+//=============================================================================
+
+//=============================================================================
 // Non-standard rotation order macros
 //
 

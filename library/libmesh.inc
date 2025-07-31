@@ -1365,6 +1365,114 @@
 // End Mesh Triangle Surface Generation
 //=============================================================================
 
+//=============================================================================
+// Mesh Point Surface Generation
+//
+// This code creates a representation of the top or bottom surface of an object
+// as a grid of points in the XZ plane, based on the extent of the object.  Points
+// in the extent that are not present in the object are represented by a
+// floor/ceiling value.
+//
+// Note: This code reuses the Mesh_bb_* macros
+//
+
+//-----------------------------------------------------------------------------
+// Mesh_grid_create_empty(BB,GridSize,optional EdgeTolerance)
+//
+#macro Mesh_grid_create_empty(BB,GridSize,optional EdgeTolerance)
+    #local _edge_tol    = #ifdef(EdgeTolerance) EdgeTolerance; #else 1e-6; #end
+    #local _grid_size   = <1,1>*GridSize;
+    #local _grid_points = array[ceil(_grid_size.x)][ceil(_grid_size.y)];
+    
+    #local _grid    = dictionary {
+        .grid_bb:       BB,
+        .grid_size:     _grid_size,
+        .edge_tol:      _edge_tol,
+        .grid_points:   _grid_points
+    }
+    ;
+    
+    _grid
+    
+#end
+
+// End Mesh_grid_create_empty
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_grid_create_like(Grid)
+//
+// Creates a grid with the same dimensions and tolerance as the given Grid
+// but with an empty point array.
+//
+#macro Mesh_grid_create_like(Grid)
+    Mesh_grid_create_empty(Grid.grid_bb,Grid.grid_size,Grid.edge_tol)
+#end
+
+// End Mesh_grid_create_like
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_grid_surface_create(Object,optional ObjectBB,GridSize,ScanDir,optional FloorCeil, optional EdgeTolerance)
+//
+#macro Mesh_grid_surface_create(Object,optional ObjectBB, GridSize,ScanDir,optional FloorCeil, optional EdgeTolerance)
+    #local _grid_bb = #ifdef(ObjectBB) ObjectBB; #else Mesh_bb_create(min_extent(Object),max_extent(Object)); #end
+    #local _grid    = Mesh_grid_create_empty(_grid_bb,GridSize,EdgeTolerance);
+    
+    #local _grid_x  = #if (_grid.grid_size.x > 1) (_grid.grid_bb.bbsize.x-2*_grid.edge_tol)/(_grid.grid_size.x-1); #else _grid.grid_bb.bbsize.x-2*_grid.edge_tol; #end
+    #local _grid_z  = #if (_grid.grid_size.y > 1) (_grid.grid_bb.bbsize.z-2*_grid.edge_tol)/(_grid.grid_size.y-1); #else _grid.grid_bb.bbsize.z-2*_grid.edge_tol; #end
+    
+    #if (ScanDir > 0)
+        #local _scan_dir    = -y;
+        #local _scan_height = _grid.grid_bb.ubounds.y + 1;
+        #local _scan_max    = #ifdef(FloorCeil) FloorCeil; #else -1e6; #end
+    #else
+        #local _scan_dir    = y;
+        #local _scan_height = _grid.grid_bb.lbounds.y - 1;
+        #local _scan_max    = #ifdef(FloorCeil) FloorCeil; #else 1e6; #end
+    #end
+    
+    #for (_xi, 0, _grid.grid_size.x-1, 1)
+        #local _x   = _grid.grid_bb.lbounds.x + _grid.edge_tol + _xi*_grid_x;
+        #for (_zi, 0, _grid.grid_size.y-1, 1)
+            #local _z   = _grid.grid_bb.lbounds.z + _grid.edge_tol + _zi*_grid_z;
+            
+            #local _nrm = <0,0,0>;
+            #local _hit = trace(Object, <_x, _scan_height, _z>, _scan_dir, _nrm);
+            #if (vlength(_nrm) > 0)
+                #local _grid.grid_points[_xi][_zi] = _hit;
+            #else                                  
+                #local _grid.grid_points[_xi][_zi] = <_x, _scan_max, _z>;
+            #end
+        #end
+    #end
+    
+    _grid
+#end
+
+// End Mesh_grid_surface_create
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Mesh_grid_transform(Grid,Transform)
+//
+#macro Mesh_grid_transform(Grid,Transform)
+    #local _transform_grid  = Mesh_grid_create_like(Grid);
+    #for (_x, 0, Grid.grid_size.x-1, 1)
+        #for (_z, 0, Grid.grid_size.y-1, 1)
+            #local _transform_grid.grid_points[_x][_z]  = vtransform(Grid.grid_points[_x][_z],Transform);
+        #end
+    #end
+    
+    _transform_grid    
+#end
+
+// End Mesh_grid_transform
+//-----------------------------------------------------------------------------
+
+// End Mesh Point Surface Generation
+//=============================================================================
+
 #version Libmesh_Inc_Temp;
 
 #end // ifndef (Libmesh_Inc_Temp)

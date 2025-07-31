@@ -32,6 +32,7 @@
 #include "libfn.inc"
 #include "libstringify.inc"
 #include "libmesh.inc"
+#include "libgeom.inc"
 
 // End My Includes
 //-----------------------------------------------------------------------------
@@ -939,6 +940,183 @@
 #end
 
 // End Col_rest_triangle_set_on_surface_transform
+//=============================================================================
+
+//=============================================================================
+// Col_rest_grid_on_surface_transform(Grid,Surface,optional XZLocation, optional Floor)
+//
+// Creates as SFY_transform that would rest an object whose bottom surface is
+// represented by the given Grid, optionally located at the given XZLocation.
+// Holes in the Surface are optionally set to the given Floor value.
+//
+// This is an adaptation of code that was created as dispersion.inc by
+//
+// Author	: Jonathan Rafael Ghiglia 
+// Date		: 25th November 2001
+//
+// The code has been adapted to use the libmesh Mesh_grid_surface instead of
+// generating the bottom surface grid inline.  It has also been cleaned up
+// considerably to use parameters instead of global variables, and to generate
+// the SFY_transform dictionary instead of an object.
+//
+// Note that this algorithm uses an assumption that the center of gravity of the
+// object is at the center of its bounding box and that its density is evenly
+// distributed.
+//
+
+#macro Col_rest_grid_on_surface_transform(Grid,Surface,optional XZLocation, optional Floor)
+    #local _xz_loc          = #ifdef(XZLocation) <1,0,1>*XZLocation; #else <0,0,0>; #end 
+    #local _floor           = #ifdef(Floor) Floor; #else -1e6; #end
+    #local _dlevel          = #ifdef(Col_rest_grid_on_surface_debug) Col_rest_grid_on_surface_debug; #else 0; #end
+    #local _surface_max     = max_extent(Surface);
+    #local _drop_height     = _surface_max.y + 10;
+
+    #macro _get_surface_point(Point)
+        #local _nrm = <0,0,0>;
+        #local _hit = trace(Surface, Point*<1,0,1> + y*_drop_height, -y, _nrm);
+        #if (vlength(_nrm) = 0)
+            #local _hit = Point*<1,0,1> + y*_floor;
+        #end 
+        
+        _hit
+    #end
+    
+    #macro _get_surface_grid(Grid)
+        #local _surface_grid    = Mesh_grid_create_like(Grid);
+        #for (_x, 0, Grid.grid_size.x-1, 1)
+            #for (_z, 0, Grid.grid_size.y-1, 1)
+                #local _surface_grid.grid_points[_x][_z]    = _get_surface_point(Grid.grid_points[_x][_z]);
+            #end
+        #end
+        
+        _surface_grid
+    #end
+    
+    // Step 1: Translate the object to the requested location at its current elevation and then compute the minimum
+    // distance between the object and the surface.  The object will be translated to make that distance 0
+    //
+    #local _object_sfy_transform    = SFY_transform_create(SFY_transform_instance_create(SFY_transform_type_translate, _xz_loc));
+    #local _object_transform        = transform { SFY_transform_sdl(_object_sfy_transform) }
+    
+    #local _object_grid     = Mesh_grid_transform(Grid, _object_transform);
+    #local _surface_grid    = _get_surface_grid(_object_grid);
+    
+    #local _min_distance    = (_drop_height - Grid.grid_bb.lbounds.y)*10;  // Come up with a number that will be greater than the largest possible distance
+    #for (_x, 0, _object_grid.grid_size.x-1, 1)
+        #for (_z, 0, _object_grid.grid_size.y-1, 1)
+            #local _point_dist  = _object_grid.grid_points[_x][_z].y - _surface_grid.grid_points[_x][_z].y;
+            #if (_point_dist < _min_distance)
+                #local _min_distance    = _point_dist;
+                #local _min_x_1         = _x;
+                #local _min_z_1         = _z;
+            #end
+        #end
+    #end
+    
+    // Update the transformation
+    //
+    #local _object_sfy_transform    = SFY_transform_create(SFY_transform_instance_create(SFY_transform_type_translate, _xz_loc-y*_min_distance));
+    #local _object_transform        = transform { SFY_transform_sdl(_object_sfy_transform) }
+    
+    // Step 2: Find the point in the largest segment of the object's bounding box with a corner at the min point
+    // that has the smallest angular distance.  This will be the second high point that the object will
+    // rest on.
+    //
+    #local _object_grid     = Mesh_grid_transform(Grid, _object_transform);
+    #local _surface_grid    = _get_surface_grid(_object_grid);
+    
+    #local _min_angle_2     = 180;  // This is arbitrarily larger than the maximum vector angle of 90...
+    #if (_min_x_1 < ceil(_object_grid.grid_size.x/2))
+        #local _x_step  = 1;
+        #local _x_end   = _object_grid.grid_size.x-1;
+    #else
+        #local _x_step  = -1;                        
+        #local _x_end   = 0;
+    #end        
+    #if (_min_z_1 < ceil(_object_grid.grid_size.y/2))
+        #local _z_step  = 1;
+        #local _z_end   = _object_grid.grid_size.y-1;
+    #else
+        #local _z_step  = -1;                        
+        #local _z_end   = 0;
+    #end
+    
+    #for (_x, _min_x_1 + _x_step, _x_end, _x_step)
+        #for (_z, _min_z_1 + _z_step, _z_end, _z_step)
+            #local _v1      = _object_grid.grid_points[_x][_min_z_1]*<1,0,1> + _object_grid.grid_points[_x][_z].y*y - _object_grid.grid_points[_min_x_1][_min_z_1];
+            #local _v2      = _surface_grid.grid_points[_x][_min_z_1]*<1,0,1> + _surface_grid.grid_points[_x][_z].y*y - _surface_grid.grid_points[_min_x_1][_min_z_1];
+            #local _angle   = degrees(Angle_vec_nocheck(_v1,_v2));
+            #if (_angle < _min_angle_2)
+                #local _min_angle_2 = _angle;
+                #local _min_x_2     = _x;
+                #local _min_z_2     = _z;
+            #end
+        #end
+    #end
+    
+    // Add in the rotation for _min_angle_2 to the current _object_sfy_transform and then
+    // recompute _object_grid and _surface_grid based on the new transformation
+    //
+    #local _dir_1       = -_x_step * z;
+    #local _rot_pt_1    = _object_grid.grid_points[_min_x_1][_min_z_1]; // This is the first touch point between the object and the surface
+    
+    SFY_transform_add(_object_sfy_transform, SFY_transform_instance_create(SFY_transform_type_translate, -_rot_pt_1));
+    SFY_transform_add_axis_rotate_trans(_object_sfy_transform, _dir_1, _min_angle_2);
+    SFY_transform_add(_object_sfy_transform, SFY_transform_instance_create(SFY_transform_type_translate, _rot_pt_1));
+    
+    // Step 3: Find the point in the best segment around <_min_x_1,_min_z_1> and <_min_x_2,_min_z_2> that would serve
+    // as the last resting point for the object
+    //
+    #local _object_grid     = Mesh_grid_transform(Grid, _object_transform);
+    #local _surface_grid    = _get_surface_grid(_object_grid);
+    
+    #local _min_angle_3     = 180;
+    #if (_z_step = 1)
+        #if (_min_z_2 >= ceil(_min_z_1+(Grid.grid_size.y - _min_z_1)/2))
+            #local _z_step  = -1;
+            #local _z_end   = 0;
+        #end
+    #else
+        #if (_min_z_2 < ceil(_min_z_1/2))
+            #local _z_step  = 1;
+            #local _z_end   = _object_grid.grid_size.y-1;
+        #end    
+    #end
+    
+    #for (_x, _min_x_1 + _x_step, _x_end, _x_step)
+        #for (_z, _min_z_2 + _z_step, _z_end, _z_step)
+            #local _v1a = _object_grid.grid_points[_x][_z] - _object_grid.grid_points[_min_x_1][_min_z_1];
+            #local _v1  = _v1a - vdot(_v1a,_dir_1)*_dir_1;
+            #local _v2a = _surface_grid.grid_points[_x][_z] - _surface_grid.grid_points[_min_x_1][_min_z_1];
+            #local _v2  = _v2a - vdot(_v1a,_dir_1)*_dir_1;
+            #local _angle   = degrees(Angle_vec_nocheck(_v1,_v2));
+            #if (_angle < _min_angle_3)
+                #local _min_angle_3 = _angle;
+                #local _min_x_3     = _x;
+                #local _min_z_3     = _z;
+            #end    
+        #end
+    #end
+    
+    #local _dir_2   = _z_step*vnormalize(_object_grid.grid_points[_min_x_2][_min_z_2] - _object_grid.grid_points[_min_x_1][_min_z_1]);
+    
+    // The original code does some checking to see if all three points are still touching and then adjusts the object
+    // and tries again.  I will look into what that means in general later.  For now, just accept the results
+    //
+    // The transformation is created from scratch so we don't insert an extra translation for the first touch point
+    //
+    #local _object_sfy_transform    = SFY_transform_create(SFY_transform_instance_create(SFY_transform_type_translate, _xz_loc-y*_min_distance));
+    SFY_transform_add(_object_sfy_transform, SFY_transform_instance_create(SFY_transform_type_translate, -_rot_pt_1));
+    SFY_transform_add_axis_rotate_trans(_object_sfy_transform, _dir_1, _min_angle_2);
+    SFY_transform_add_axis_rotate_trans(_object_sfy_transform, _dir_2, _min_angle_3);
+    SFY_transform_add(_object_sfy_transform, SFY_transform_instance_create(SFY_transform_type_translate, _rot_pt_1));
+    
+    _object_sfy_transform
+       
+    
+#end
+
+// End Col_rest_grid_on_surface_transform
 //=============================================================================
 
 #version Libcollide_Inc_Temp;
