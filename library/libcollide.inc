@@ -1172,6 +1172,8 @@
     
 #end
 
+// This is potentially a new implementation.  Still needs work to determine the Z rotation
+//
 #macro Col_rest_grid_on_surface_transform_version2(Grid,Surface,optional XZLocation, optional Floor)
     #local _xz_loc          = #ifdef(XZLocation) <1,0,1>*XZLocation; #else <0,0,0>; #end 
     #local _floor           = #ifdef(Floor) Floor; #else -1e6; #end

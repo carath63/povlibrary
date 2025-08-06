@@ -1415,6 +1415,16 @@
 //-----------------------------------------------------------------------------
 // Mesh_grid_surface_create(Object,optional ObjectBB,GridSize,ScanDir,optional FloorCeil, optional EdgeTolerance)
 //
+//      Creates a Mesh_grid dictionary whose grid_points are assigned by scanning the given object from the top (+Y)
+// or bottom (-Y) directions.
+//
+//  Object: The SDL object to be scanned
+//  ObjectBB: The bounding box (See Mesh_bb_create) for the object.  Default: full bounding box of Object
+//  GridSize: 2-vector <X,Z> representing the number of points in the grid in the X and Z directions
+//  ScanDir: -1 to scan the bottom or 1 to scan the top of the object
+//  FloorCeil:  The min/max value to be used for points in the bounding box that are not in the Object.  Default: +/- 1e6
+//  EdgeTolerance:  The minimum distance from the edges of the bounding box for the grid to avoid missing the object when scanning at the edge points. Default: 1e-6
+//  
 #macro Mesh_grid_surface_create(Object,optional ObjectBB, GridSize,ScanDir,optional FloorCeil, optional EdgeTolerance)
     #local _grid_bb = #ifdef(ObjectBB) ObjectBB; #else Mesh_bb_create(min_extent(Object),max_extent(Object)); #end
     #local _grid    = Mesh_grid_create_empty(_grid_bb,GridSize,EdgeTolerance);
@@ -1455,6 +1465,9 @@
 
 //-----------------------------------------------------------------------------
 // Mesh_grid_transform(Grid,Transform)
+//
+// Creates a new Mesh_grid dictionary with the same dimensions as Grid, but whose
+// grid_points have been transformed with the given transform { Transform }
 //
 #macro Mesh_grid_transform(Grid,Transform)
     #local _transform_grid  = Mesh_grid_create_like(Grid);
