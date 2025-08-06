@@ -1075,6 +1075,7 @@
     #local _object_transform        = transform { SFY_transform_sdl(_object_sfy_transform) }
     
     #if (_dlevel > 1)
+        #debug concat("_min_angle_2 = ", str(_min_angle_2, 0, 6), "\n")
         #debug concat("Transform 1: _min_x_1 = ", str(_min_x_1, 0, 0), "; _min_z_1 = ", str(_min_z_1, 0, 0), " <", vstr(3, _object_grid.grid_points[_min_x_1][_min_z_1], ",", 0, 6), ">\n")
         #debug concat("Transform 1: _min_x_2 = ", str(_min_x_2, 0, 0), "; _min_z_2 = ", str(_min_z_2, 0, 0), " <", vstr(3, _object_grid.grid_points[_min_x_2][_min_z_2], ",", 0, 6), ">\n")
     #end
@@ -1088,6 +1089,8 @@
     #if (_dlevel > 1)
         #debug concat("Transform 2: _min_x_1 = ", str(_min_x_1, 0, 0), "; _min_z_1 = ", str(_min_z_1, 0, 0), " <", vstr(3, _object_grid.grid_points[_min_x_1][_min_z_1], ",", 0, 6), ">\n")
         #debug concat("Transform 2: _min_x_2 = ", str(_min_x_2, 0, 0), "; _min_z_2 = ", str(_min_z_2, 0, 0), " <", vstr(3, _object_grid.grid_points[_min_x_2][_min_z_2], ",", 0, 6), ">\n")
+        #debug concat("Surface: _min_x_1 = ", str(_min_x_1, 0, 0), "; _min_z_1 = ", str(_min_z_1, 0, 0), " <", vstr(3, _get_surface_point(_object_grid.grid_points[_min_x_1][_min_z_1]), ",", 0, 6), ">\n")
+        #debug concat("Surface: _min_x_2 = ", str(_min_x_2, 0, 0), "; _min_z_2 = ", str(_min_z_2, 0, 0), " <", vstr(3, _get_surface_point(_object_grid.grid_points[_min_x_2][_min_z_2]), ",", 0, 6), ">\n")
     
         SFY_transform_sdl_dump(_object_sfy_transform,)
     #end
@@ -1133,15 +1136,26 @@
     SFY_transform_add_axis_rotate_trans(_object_sfy_transform, _dir_2, _min_angle_3);
     SFY_transform_add(_object_sfy_transform, SFY_transform_instance_create(SFY_transform_type_translate, _rot_pt_1));
     
+    #local _object_transform        = transform { SFY_transform_sdl(_object_sfy_transform) }
+    #local _object_grid             = Mesh_grid_transform(Grid, _object_transform);
+    #local _surface_grid            = _get_surface_grid(_object_grid);
+    #local _object_sfy_transform.rest_points    = dictionary {
+        .op0:   _object_grid.grid_points[_min_x_1][_min_z_1],
+        .op1:   _object_grid.grid_points[_min_x_2][_min_z_2],
+        .op2:   _object_grid.grid_points[_min_x_3][_min_z_3],
+        .sp0:   _surface_grid.grid_points[_min_x_1][_min_z_1],
+        .sp1:   _surface_grid.grid_points[_min_x_2][_min_z_2],
+        .sp2:   _surface_grid.grid_points[_min_x_3][_min_z_3]
+    }
+    ;
+
     #if (_dlevel > 1)
+        #debug concat("_min_angle_2 = ", str(_min_angle_2, 0, 6), "\n")
+        #debug concat("_min_angle_3 = ", str(_min_angle_3, 0, 6), "\n")
         #debug concat("Transform 2: _min_x_1 = ", str(_min_x_1, 0, 0), "; _min_z_1 = ", str(_min_z_1, 0, 0), " <", vstr(3, _object_grid.grid_points[_min_x_1][_min_z_1], ",", 0, 6), ">\n")
         #debug concat("Transform 2: _min_x_2 = ", str(_min_x_2, 0, 0), "; _min_z_2 = ", str(_min_z_2, 0, 0), " <", vstr(3, _object_grid.grid_points[_min_x_2][_min_z_2], ",", 0, 6), ">\n")
         #debug concat("Transform 2: _min_x_3 = ", str(_min_x_3, 0, 0), "; _min_z_3 = ", str(_min_z_3, 0, 0), " <", vstr(3, _object_grid.grid_points[_min_x_3][_min_z_3], ",", 0, 6), ">\n")
         
-        #local _object_transform        = transform { SFY_transform_sdl(_object_sfy_transform) }
-        #local _object_grid             = Mesh_grid_transform(Grid, _object_transform);
-        #local _surface_grid            = _get_surface_grid(_object_grid);
-
         #debug concat("Transform 3: _min_x_1 = ", str(_min_x_1, 0, 0), "; _min_z_1 = ", str(_min_z_1, 0, 0), " <", vstr(3, _object_grid.grid_points[_min_x_1][_min_z_1], ",", 0, 6), ">\n")
         #debug concat("Transform 3: _min_x_2 = ", str(_min_x_2, 0, 0), "; _min_z_2 = ", str(_min_z_2, 0, 0), " <", vstr(3, _object_grid.grid_points[_min_x_2][_min_z_2], ",", 0, 6), ">\n")
         #debug concat("Transform 3: _min_x_3 = ", str(_min_x_3, 0, 0), "; _min_z_3 = ", str(_min_z_3, 0, 0), " <", vstr(3, _object_grid.grid_points[_min_x_3][_min_z_3], ",", 0, 6), ">\n")
@@ -1152,6 +1166,148 @@
         
         SFY_transform_sdl_dump(_object_sfy_transform,)
     #end
+    
+    _object_sfy_transform
+       
+    
+#end
+
+#macro Col_rest_grid_on_surface_transform_version2(Grid,Surface,optional XZLocation, optional Floor)
+    #local _xz_loc          = #ifdef(XZLocation) <1,0,1>*XZLocation; #else <0,0,0>; #end 
+    #local _floor           = #ifdef(Floor) Floor; #else -1e6; #end
+    #local _dlevel          = #ifdef(Col_rest_grid_on_surface_debug) Col_rest_grid_on_surface_debug; #else 0; #end
+    #local _surface_max     = max_extent(Surface);
+    #local _drop_height     = _surface_max.y + 10;
+
+    #macro _get_surface_point(Point)
+        #local _nrm = <0,0,0>;
+        #local _hit = trace(Surface, Point*<1,0,1> + y*_drop_height, -y, _nrm);
+        #if (vlength(_nrm) = 0)
+            #local _hit = Point*<1,0,1> + y*_floor;
+        #end 
+        
+        _hit
+    #end
+    
+    #macro _get_surface_grid(Grid)
+        #local _surface_grid    = Mesh_grid_create_like(Grid);
+        #for (_x, 0, Grid.grid_size.x-1, 1)
+            #for (_z, 0, Grid.grid_size.y-1, 1)
+                #local _surface_grid.grid_points[_x][_z]    = _get_surface_point(Grid.grid_points[_x][_z]);
+            #end
+        #end
+        
+        _surface_grid
+    #end
+    
+    // Step 1: Translate the object to the requested location at its current elevation and then compute the minimum
+    // distance between the object and the surface.  The object will be translated to make that distance 0
+    //
+    #local _object_sfy_transform    = SFY_transform_create(SFY_transform_instance_create(SFY_transform_type_translate, _xz_loc));
+    #local _object_transform        = transform { SFY_transform_sdl(_object_sfy_transform) }
+    
+    #local _object_grid     = Mesh_grid_transform(Grid, _object_transform);
+    #local _surface_grid    = _get_surface_grid(_object_grid);
+    
+    #local _min_distance_1  = (_drop_height - Grid.grid_bb.lbounds.y)*10;  // Come up with a number that will be greater than the largest possible distance
+    #for (_x, 0, _object_grid.grid_size.x-1, 1)
+        #for (_z, 0, _object_grid.grid_size.y-1, 1)
+            #local _point_dist  = _object_grid.grid_points[_x][_z].y - _surface_grid.grid_points[_x][_z].y;
+            #if (_point_dist < _min_distance_1)
+                #local _min_distance_1  = _point_dist;
+                #local _min_x_1         = _x;
+                #local _min_z_1         = _z;
+            #end
+        #end
+    #end
+    #local _rest_point_1    = _surface_grid.grid_points[_min_x_1][_min_z_1];
+    
+    #if (_dlevel > 1)
+        #debug concat("Step 1: Minimum distance = ", str(_min_distance_1, 0, 6), " located at translated grid point[", str(_min_x_1,0,0), ",", str(_min_z_1,0,0), "] <", vstr(3, _object_grid.grid_points[_min_x_1][_min_z_1], ",", 0, 6), "> surface point <", vstr(3, _surface_grid.grid_points[_min_x_1][_min_z_1], ",", 0, 6), ">\n")
+    #end
+    
+    // Update the transformation and the transformed object mapping and surface points
+    //
+    #local _object_sfy_transform    = SFY_transform_create(SFY_transform_instance_create(SFY_transform_type_translate, _xz_loc-y*_min_distance_1));
+    #local _object_transform        = transform { SFY_transform_sdl(_object_sfy_transform) }
+    #local _object_grid             = Mesh_grid_transform(Grid, _object_transform);
+    #local _surface_grid            = _get_surface_grid(_object_grid);
+    
+    // Step 2: Locate the point in the largest quadrant centered at this point with the next lowest minimum distance
+    //
+    #local _min_distance_2  = (_drop_height - Grid.grid_bb.lbounds.y)*10;  // Come up with a number that will be greater than the largest possible distance
+    
+    #if (_min_x_1 < ceil(_object_grid.grid_size.x/2))
+        #local _x_step  = 1;
+        #local _x_end   = _object_grid.grid_size.x-1;
+    #else
+        #local _x_step  = -1;                        
+        #local _x_end   = 0;
+    #end        
+    #if (_min_z_1 < ceil(_object_grid.grid_size.y/2))
+        #local _z_step  = 1;
+        #local _z_end   = _object_grid.grid_size.y-1;
+    #else
+        #local _z_step  = -1;                        
+        #local _z_end   = 0;
+    #end
+    
+    #for (_x, _min_x_1, _x_end, _x_step)
+        #for (_z, _min_z_1, _z_end, _z_step)
+            #local _point_dist  = _object_grid.grid_points[_x][_z].y - _surface_grid.grid_points[_x][_z].y;
+            #if (_point_dist < _min_distance_2 & (_x != _min_x_1 | _z != _min_z_1))
+                #local _min_distance_2  = _point_dist;
+                #local _min_x_2         = _x;
+                #local _min_z_2         = _z;
+            #end
+        #end
+    #end
+    #local _rest_point_2    = _surface_grid.grid_points[_min_x_2][_min_z_2];
+    #local _axis_2  = _surface_grid.grid_points[_min_x_2][_min_z_2] - _surface_grid.grid_points[_min_x_1][_min_z_1];
+    #local _yrot_2  = degrees(atan2(_axis_2.x,_axis_2.z));
+    #local _xrot_2  = -degrees(atan2(_axis_2.y, sqrt(pow(_axis_2.x,2)+pow(_axis_2.z,2))));
+    #if (_dlevel > 1)
+        #debug concat("Step 2: Minimum distance = ", str(_min_distance_2, 0, 6), " located at translated grid point[", str(_min_x_2,0,0), ",", str(_min_z_2,0,0), "] <", vstr(3, _object_grid.grid_points[_min_x_2][_min_z_2], ",", 0, 6), "> surface point <", vstr(3, _surface_grid.grid_points[_min_x_2][_min_z_2], ",", 0, 6), ">\n")
+        #debug concat("Step 2: _yrot_2 = ", str(_yrot_2, 0, 6), " _xrot_2 = ", str(_xrot_2, 0, 6), "\n")
+    #end
+    
+    SFY_transform_add(_object_sfy_transform, SFY_transform_instance_create(SFY_transform_type_translate, -_object_grid.grid_points[_min_x_1][_min_z_1]))
+    SFY_transform_add(_object_sfy_transform, SFY_transform_instance_create(SFY_transform_type_rotate, <0, -_yrot_2, 0>))
+    SFY_transform_add(_object_sfy_transform, SFY_transform_instance_create(SFY_transform_type_rotate, <_xrot_2, 0, 0>))
+    SFY_transform_add(_object_sfy_transform, SFY_transform_instance_create(SFY_transform_type_rotate, <0, _yrot_2, 0>))
+    SFY_transform_add(_object_sfy_transform, SFY_transform_instance_create(SFY_transform_type_translate, _object_grid.grid_points[_min_x_1][_min_z_1]))
+    #local _object_transform        = transform { SFY_transform_sdl(_object_sfy_transform) }
+    
+    // Step 3: Find the largest side of the axis created in step 2, and find the minimum distance between the transformed object and surface
+    // outside of the first two points found
+    //
+    #local _rest_axis       = _rest_point_2 - _rest_point_1;
+    #local _rest_axis_len   = vlength(_rest_axis);
+    #local _min_distance_3  = (_drop_height - Grid.grid_bb.lbounds.y)*10;  // Come up with a number that will be greater than the largest possible distance
+    #local _max_axis_dist   = 0;
+    
+    #for (_x, 0, _object_grid.grid_size.x-1, 1)
+        #for (_z, 0, _object_grid.grid_size.y-1, 1)
+            #local _axis_dist   = vlength(vcross(_object_grid.grid_points[_x][_z] - _rest_point_1, _rest_axis))/_rest_axis_len;
+            #if (_axis_dist != 0)
+                #local _point_dist  = _object_grid.grid_points[_x][_z].y - _surface_grid.grid_points[_x][_z].y;
+                #if (_point_dist < _min_distance_3 | (_point_dist = _min_distance_3 & _axis_dist > _max_axis_dist ))
+                    #local _min_distance_3  = _point_dist;
+                    #local _max_axis_dist   = _axis_dist;
+                    #local _min_x_3         = _x;
+                    #local _min_z_3         = _z;
+                #end
+            #end
+        #end
+    #end 
+    
+    #if (_dlevel > 1)
+        #debug concat("Step 3: Minimum distance = ", str(_min_distance_3, 0, 6), " located at translated grid point[", str(_min_x_3,0,0), ",", str(_min_z_3,0,0), "] <", vstr(3, _object_grid.grid_points[_min_x_3][_min_z_3], ",", 0, 6), "> surface point <", vstr(3, _surface_grid.grid_points[_min_x_3][_min_z_3], ",", 0, 6), ">\n")
+    #end
+    
+    #local _object_grid     = Mesh_grid_transform(Grid, _object_transform);
+    #local _surface_grid    = _get_surface_grid(_object_grid);
+    
     
     _object_sfy_transform
        
