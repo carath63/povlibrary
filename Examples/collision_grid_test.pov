@@ -259,7 +259,7 @@ global_settings {
     
     #local _surface = object { Scene_test_surface() }
     #for (i, 1, Scene_object_count, 1)
-        #local _object      = object { Scene_test_object(Scene_object_type) }
+        #local _object      = object { Scene_test_object(Scene_object_type) pigment { color rgbt 0.75 } }
         #local _mesh_grid   = Mesh_grid_surface_create(_object,,Scene_object_grid_size,-1,,)
 
         #if (i > 1)
@@ -283,8 +283,10 @@ global_settings {
             ;
             #if (_object_float > Scene_object_max_float)
                 #debug concat("_object_float = ", str(_object_float, 0, 6), " exceeds Scene_object_max_float ", str(Scene_object_max_float, 0, 6), "; retrying\n")
-                #local _loc_x   = _loc_x + 0.25*SRand(Scene_seed)*_mesh_grid.grid_bb.bbsize.x;
-                #local _loc_z   = _loc_z + 0.25*SRand(Scene_seed)*_mesh_grid.grid_bb.bbsize.z;
+                #local _jitter_x    = 0.25*SRand(Scene_seed)*_mesh_grid.grid_bb.bbsize.x;
+                #local _jitter_z    = 0.25*SRand(Scene_seed)*_mesh_grid.grid_bb.bbsize.z;
+                #local _loc_x   = #if(abs(_loc_x + _jitter_x) > Scene_surface_size.x) _loc_x - _jitter_x ; #else _loc_x + _jitter_x; #end 
+                #local _loc_z   = #if(abs(_loc_z + _jitter_z) > Scene_surface_size.z) _loc_z - _jitter_z ; #else _loc_z + _jitter_z; #end 
             #end
         #end
         #debug concat("_sfy_transform[", str(i, 0, 0), "]=\n")
