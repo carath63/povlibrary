@@ -105,7 +105,7 @@
 //
 
 //-----------------------------------------------------------------------------
-// Chess_set_board_create(BoardSize,SquareSize,BoardObj)
+// Chess_set_board_create(BoardSize,SquareSize,optional BoardObj)
 //
 // Creates a board representation as a dictionary consisting of:
 //      BoardSize: <x,y,z>
@@ -116,11 +116,18 @@
 //      BoardObj: object{} for the board in the chess set.  It should be
 //                resting on the Y=0 plane, and centered at <0,0> in the XZ plane
 //
-#macro Chess_set_board_create(BoardSize,SquareSize,BoardObj)
+//      If BoardObj is not defined, then the macro Chess_set_board_object_create(ChessBoardState) should
+//  be defined and will be called by the Chess_set_layout() macro to create an instance of the board.
+//  If neither are defined, Chess_set_layout() will only place the pieces at the locations on the board
+//  based on the BoardSize and SquareSize values.
+//
+#macro Chess_set_board_create(BoardSize,SquareSize,optional BoardObj)
     #local _board   = dictionary {
         .board_size:    BoardSize,
         .square_size:   SquareSize,
+        #ifdef(BoardObj)
         .board_obj:     BoardObj
+        #end
     }
     ;
     
@@ -790,7 +797,13 @@
 
 #macro Chess_board_layout(ChessBoardState)
     #local _layout  = union {
+        #ifdef(ChessBoardState.chess_set.board.board_obj)
         object { ChessBoardState.chess_set.board.board_obj }
+        #else
+            #ifdef(Chess_set_board_object_create)
+                object { Chess_set_board_object_create(ChessBoardState) }
+            #end
+        #end
         #for (i, 0, 7, 1)
             #for (j, 0, 7, 1)
                 #local _loc_piece   = Chess_board_state_get_index(ChessBoardState, <i,j>);
