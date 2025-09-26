@@ -408,6 +408,52 @@
 //=============================================================================
 
 //=============================================================================
+// Iso_rounded_tube()
+// Iso_fixed_rounded_tube(InnerRadius,Thickness,Height)
+//
+
+//-----------------------------------------------------------------------------
+// Iso_rounded_tube()
+//
+#macro Iso_rounded_tube()
+    #local _irt_cyl_fn      = Iso_capped_cylinder()
+    #local _irt_torus_fn    = Iso_torus()
+    
+    function(x,y,z,r,th,ht) {
+        Iso_union(
+            Iso_union(
+                Iso_subtraction(
+                    _irt_cyl_fn(x,y,z,r,ht+1),
+                    _irt_cyl_fn(x,y,z,r+th,ht-th/2)
+                ),
+                _irt_torus_fn(x,y-(ht-th/2),z,r+th/2,th/2)
+            ),
+            _irt_torus_fn(x,y+(ht-th/2),z,r+th/2,th/2)
+        )            
+    }
+#end
+
+// End Iso_rounded_tube
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_rounded_tube(InnerRadiuus,Thickness,Height)
+//
+#macro Iso_fixed_rounded_tube(InnerRadius,Thickness,Height)
+    #local _ifrt_tube_fn    = Iso_rounded_tube()
+    
+    function(x,y,z) {
+        _ifrt_tube_fn(x,y,z,InnerRadius,Thickness,Height/2)
+    }    
+#end
+
+// End Iso_fixed_rounded_tube
+//-----------------------------------------------------------------------------
+
+// End Iso_rounded_tube
+//=============================================================================
+
+//=============================================================================
 // Iso_rounded_cylinder()
 //      returns function(x,y,z,rr,rh,re) for the difference from a capped
 // cylinder along the y axis with radius rr, edge radius re, and height 2*h 
@@ -666,7 +712,8 @@
 //  The max bulge is at y=0.7
 //
 #declare Iso_egg_lbounds    = <-1.055, -1, -1.055>;
-#declare Iso_egg_ubounds    = <1.055, 1, 1.055>;
+#declare Iso_egg_ubounds    = <1.055, 1, 1.055>; 
+#declare Iso_egg_size       = Iso_egg_ubounds - Iso_egg_lbounds;
 #macro Iso_egg()
     #local _egg_fn  = function(x,y) {
         (x*x + pow(pow(1.4,x)*y,2)) - 1
