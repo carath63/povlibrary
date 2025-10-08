@@ -701,6 +701,55 @@
 //=============================================================================
 
 //=============================================================================
+// Iso_rounded_box3()
+// Iso_fixed_rounded_box3(Size,RndXZ,RndY)
+//
+
+//-----------------------------------------------------------------------------
+// Iso_rounded_box3()
+//
+// Returns function(x,y,z,rxz,ry,sx,sy,sz) that is an SDF for a box
+// whose corners in the XZ plane are rounded with a radius of rxz, and whose
+// top and bottom edges are rounded with a radius of ry.
+//
+#macro Iso_rounded_box3()
+    #local _irb3_rbox_fn    = Iso_rounded_box()
+    #local _irb3_box_fn     = Iso_box()
+    
+    function(x,y,z,rxz,ry,sx,sy,sz) {
+        Iso_intersection(
+            _irb3_rbox_fn(x,y,z,rxz-ry,sx-ry,sy+rxz,sz-ry),
+            _irb3_box_fn(x,y,z,1.1*sx,sy-ry,1.1*sz)
+        ) - ry    
+    }
+    
+#end
+
+// End Iso_rounded_box3
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_rounded_box3(Size,RndXZ,RndY)
+//
+#macro Iso_fixed_rounded_box3(Size,RndXZ,RndY)
+    #local _ifrb3_shape_fn  = Iso_rounded_box3()
+    
+    #local _sx  = Size.x/2;
+    #local _sy  = Size.y/2;
+    #local _sz  = Size.z/2;
+    
+    function(x,y,z) {
+        _ifrb3_shape_fn(x,y,z,RndXZ,RndY,_sx,_sy,_sz)
+    }
+#end
+
+// End Iso_fixed_rounded_box3
+//-----------------------------------------------------------------------------
+
+// End Iso_rounded_box3, Iso_fixed_rounded_box3
+//=============================================================================
+
+//=============================================================================
 // Egg Shapes
 //
 
