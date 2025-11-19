@@ -202,6 +202,25 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+// Wood_cmap_create2(FileName,Start,End,Entries)
+//
+#macro Wood_cmap_create2(FileName,Start,End,Entries)
+    #local _start           = Start*<1,1,1>;
+    #local _end             = End*<1,1,1>;
+    
+    #local _wood_pigment    = pigment {
+        Wood_image_map_create(FileName)
+    }
+    
+    #local _cmap    = Cmap_create_from_pigment(_wood_pigment,Color_type_rgb,_start,_end,Entries)
+    
+    _cmap        
+#end
+
+// End Wood_cmap_create
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // Wood_color_map_fade(Cmap,FadeColor,FadeWeight)
 //
 // Fades the entire color map by adding the FadeColor*FadeWeight to each color

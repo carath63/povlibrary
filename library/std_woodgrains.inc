@@ -461,6 +461,57 @@
 // End Pencil_wood
 //=============================================================================
 
+//=============================================================================
+// Hard Maple (Acer saccharum) 
+//
+#declare Hard_maple_min_trunk_diameter     = Math_Scale(SCALE_FEET, 2);
+#declare Hard_maple_max_trunk_diameter     = Math_Scale(SCALE_FEET, 3);
+#declare Hard_maple_min_trunk_length       = Math_Scale(SCALE_FEET, 80);
+#declare Hard_maple_max_trunk_length       = Math_Scale(SCALE_FEET, 115);
+#declare Hard_maple_grain_size             = Math_Scale(SCALE_INCH, 3/4);
+#declare Hard_maple_grain_length           = Math_Scale(SCALE_INCH, 16);
+#declare Hard_maple_colormap_file          = "woodgrains/acer-saccharum.jpg";
+#declare Hard_maple_colormap_start         = 0.3;
+#declare Hard_maple_colormap_end           = 0.7;
+#declare Hard_maple_colormap_entries       = 16;
+
+//-----------------------------------------------------------------------------
+// Hard_maple_grain(NSeed)
+//
+#macro Hard_maple_grain(NSeed)
+    #local _grain   = pigment {
+        marble
+        color_map {
+            [0.0 rgb 0]
+            [1.0 rgb 1]
+        }
+        warp {
+            turbulence <0.5, 0, 0.1>
+        }
+        scale <Hard_maple_grain_size, Hard_maple_grain_size, Hard_maple_grain_length>*(1 + 0.1*SRand(NSeed))
+        translate <Hard_maple_grain_size*SRand(NSeed), Hard_maple_grain_size*SRand(NSeed), Hard_maple_grain_length*10*SRand(NSeed)>     
+    }
+    
+    _grain
+
+#end
+
+// End Hard_maple_grain
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Hard_maple_cmap_create()
+//
+#macro Hard_maple_cmap_create()
+    Wood_cmap_create(Hard_maple_colormap_file,Hard_maple_colormap_start,Hard_maple_colormap_end,Hard_maple_colormap_entries)
+#end    
+
+// End Hard_maple_cmap_create
+//-----------------------------------------------------------------------------
+
+// End Hard Maple (Acer saccharum)
+//=============================================================================
+
 #version Std_woodgrains_Inc_Temp;
 
 #end // ifndef (Std_woodgrains_Inc_Temp)

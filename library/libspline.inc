@@ -137,21 +137,25 @@
     #local _location        = <0,0,0>+Spline(Time);
     #local _locationNext    = <0,0,0>+Spline(Time+Foresight);
     #local _locationPrev    = <0,0,0>+Spline(Time-Foresight);
+    #if (vlength(_locationNext-_location) = 0)
+    #local _forward         = z;
+    #else
     #local _forward         = vnormalize(_locationNext-_location);
-    #if (vlength(vcross(Sky,_forward)) = 0)
-        #local _ytrans  = Reorient_Trans(y, Sky)
+    #end
+    #if (vlength(vcross(_sky,_forward)) = 0)
+        #local _ytrans  = Reorient_Trans(y, _sky)
         #local _right   = vtransform(x, _ytrans);
     #else
-        #local _right   = VPerp_To_Plane(Sky,_forward);
+        #local _right   = VPerp_To_Plane(_sky,_forward);
     #end
     
     #local _up              = VPerp_To_Plane(_forward,_right);
-    #local _matrix          = _matrix_Trans(_right,_up,_forward,_location)
+    #local _matrix          = Matrix_Trans(_right,_up,_forward,_location)
     #local _bankingRotation =
         degrees(atan2(
                         VRotation(
-                            VProject_Plane((_locationNext-_location),Sky),
-                            VProject_Plane((_location-_locationPrev),Sky),
+                            VProject_Plane((_locationNext-_location),_sky),
+                            VProject_Plane((_location-_locationPrev),_sky),
                             _up
                         )*_banking
                         ,1
@@ -162,7 +166,7 @@
         transform _matrix
     }
     
-    _t;
+    _t
     
 #end
 

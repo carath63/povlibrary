@@ -158,6 +158,84 @@
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
+// Cmap_color_brightness(Color)
+//
+#macro Cmap_color_brightness(Color)
+    #local _brightness  = sqrt(Color.red*Color.red + Color.green*Color.green + Color.blue*Color.blue);
+    
+    _brightness
+#end
+
+// End Cmap_color_brightness
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Cmap_average_color(Cmap)
+//
+#macro Cmap_average_color(Cmap)
+    #if (Cmap.num_entries < 1)
+        #error "Cmap_average_color: Cmap has no entries\n"
+    #end    
+    #local _c   = <0,0,0>;
+    #for (i, 0, Cmap.num_entries-1, 1)
+        #local _c   = _c + Cmap.entries[i].value;
+    #end
+    
+    (_c/Cmap.num_entries)
+#end
+
+// End Cmap_average_color
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Cmap_darkest_color(Cmap)
+//
+#macro Cmap_darkest_color(Cmap)
+    #if (Cmap.num_entries < 1)
+        #error "Cmap_darkest_color: Cmap has no entries\n"
+    #end
+    #local _darkest = Cmap.entries[0].value;
+    #local _dv      = vlength(_darkest);
+    
+    #for (i, 1, Cmap.num_entries-1, 1)
+        #local _v   = Cmap_color_brightness(Cmap.entries[i].value);
+        #if (_v < _dv)
+            #local _darkest = Cmap.entries[i].value;
+            #local _dv      = _v;
+        #end    
+    #end
+    
+    _darkest    
+#end
+
+// End Cmap_darkest_color
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Cmap_brightest_color(Cmap)
+//
+#macro Cmap_brightest_color(Cmap)
+    #if (Cmap.num_entries < 1)
+        #error "Cmap_brightest_color: Cmap has no entries\n"
+    #end
+    #local _brightest   = Cmap.entries[0].value;
+    #local _dv          = vlength(_brightest);
+    
+    #for (i, 1, Cmap.num_entries-1, 1)
+        #local _v   = Cmap_color_brightness(Cmap.entries[i].value);
+        #if (_v > _dv)
+            #local _brightest   = Cmap.entries[i].value;
+            #local _dv          = _v;
+        #end    
+    #end
+    
+    _brightest    
+#end
+
+// End Cmap_brightest_color
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
 // Cmap_generate(Cmap)
 //
 #macro Cmap_generate(Cmap)
