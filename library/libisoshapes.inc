@@ -404,7 +404,126 @@
 // End Iso_fixed_capped_cylinder
 //-----------------------------------------------------------------------------
 
+//-----------------------------------------------------------------------------
+// Iso_graduated_capped_cylinder(Radius1,Radius2,Height,optional Power)
+//
+#macro Iso_graduated_capped_cylinder(Radius1,Radius2,Height,optional Power)
+    #local _igcc_cylinder_fn    = Iso_capped_cylinder()
+    #local _rdelta              = Radius2 - Radius1;
+    #local _sh                  = Height/2;
+    
+    #ifdef(Power)
+        #local _igcc_radius_fn  = function(y) {
+            Radius1 + _rdelta * pow((y+_sh)/Height,Power)
+        }
+    #else                                                     
+        #local _igcc_radius_fn  = function(y) {
+            Radius1 + _rdelta * ((y+_sh)/Height)
+        }    
+    #end
+    
+    function(x,y,z) {
+        _igcc_cylinder_fn(x,y,z,_igcc_radius_fn(y),_sh)
+    }    
+#end
+
+// End Iso_graduated_capped_cylinder
+//-----------------------------------------------------------------------------
+
 // End Iso_capped_cylinder, Iso_fixed_capped_cylinder
+//=============================================================================
+
+//=============================================================================
+// Iso_capped_cylinder_segment()
+//      returns function(x,y,z,r,h,a) for the distance of a point from a
+//  capped cylinder segment of radius r, height 2*h, arc-length 2*a radians,
+//  centered at the origin with the open section of the arc facing the -z
+//  direction.
+//
+// Iso_fixed_capped_cylinder_segment(Radius,Height,ArcLength)
+//
+#macro Iso_capped_cylinder_segment()
+    #local _iccs_capped_cylinder_fn = Iso_capped_cylinder()
+    
+    function(x,y,z,r,h,a) {
+        max(
+            _iccs_capped_cylinder_fn(x,y,z,r,h),
+            r*(abs(a) - abs(atan2(x,-z)))
+        )    
+            
+    }
+    
+#end 
+
+#macro Iso_fixed_capped_cylinder_segment(Radius,Height,ArcLength)
+    #local _ifccs_fn    = Iso_capped_cylinder_segment()
+    
+    #local _sh  = Height/2;
+    #local _sa  = ArcLength/2;
+    
+    function(x,y,z) {
+        _ifccs_fn(x,y,z,Radius,_sh,_sa)
+    }    
+#end
+
+// End Iso_capped_cylinder_segment
+//=============================================================================
+
+//=============================================================================
+// Iso_tube()
+//
+// Iso_fixed_tube(Radius,Height,Thickness)
+//
+#macro Iso_tube()
+    #local _it_capped_cylinder  = Iso_capped_cylinder()
+    
+    function(x,y,z,r,h,th) {
+        Iso_subtraction(
+            _it_capped_cylinder(x,y,z,r-th,h),
+            _it_capped_cylinder(x,y,z,r,h)
+        )    
+    }
+#end
+
+#macro Iso_fixed_tube(Radius,Height,Thickness)
+    #local _ift_tube_fn = Iso_tube()
+    
+    #local _h   = Height/2;
+    function(x,y,z) {
+        _ift_tube_fn(x,y,z,Radius,_h,Thickness)
+    }
+#end
+
+// End Iso_tube, Iso_fixed_tube
+//=============================================================================
+
+//=============================================================================
+// Iso_tube_segment()
+//
+// Iso_fixed_tube_segment(Radius,Height,ArcLength,Thickness)
+//
+#macro Iso_tube_segment()
+    #local _its_cyl_fn  = Iso_capped_cylinder_segment()
+    
+    function(x,y,z,r,h,a,th) {
+        Iso_subtraction(
+            _its_cyl_fn(x,y,z,r-th,h,a),
+            _its_cyl_fn(x,y,z,r,h,a)
+        )    
+    }
+#end
+
+#macro Iso_fixed_tube_segment(Radius,Height,ArcLength,Thickness) 
+    #local _ifts_tube_fn    = Iso_tube_segment()
+    #local _sh  = Height/2;
+    #local _sa  = ArcLength/2;
+    
+    function(x,y,z) {
+        _ifts_tube_fn(x,y,z,Radius,_sh,_sa,Thickness)
+    }
+#end
+
+// End Iso_tube_segment, Iso_fixed_tube_segment
 //=============================================================================
 
 //=============================================================================
@@ -1885,7 +2004,7 @@
 }
 
 #declare Iso_subtraction    = function(d1,d2) {
-    max(-d1,d2)
+    max(d2,-d1)
 }
 
 #declare Iso_intersection   = function(d1,d2) {

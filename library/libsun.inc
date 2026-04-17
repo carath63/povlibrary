@@ -15,9 +15,21 @@
     #debug "including libsun.inc\n"
 #end                     
 
+#include "math.inc"
 #include "liblights.inc"
 #include "libtime.inc"
 #include "libskydome.inc"
+
+#macro Trig_norm_degrees(D)
+    #local _a   = mod(D,360);
+    #if (_a < 0)
+        #local _a   = _a + 360;
+    #end
+    #if (_a > 180)
+        #local _a   = _a - 360;
+    #end
+    _a        
+#end
 
 //=============================================================================
 // Sun-related constants
@@ -151,7 +163,7 @@ _result
 // _Sun_true_longitude(M)
 //
 #macro _Sun_true_longitude(M)
-    #local _result  = M + (1.916 * sind(M)) + (0.020 * sin(2*M)) + 282.634;
+    #local _result  = M + (1.916 * sind(M)) + (0.020 * sind(2*M)) + 282.634;
     #local _result  = Trig_norm_degrees(_result);
 _result    
 #end   
@@ -319,7 +331,8 @@ T
     #local _lc          = Light_Color(_sun_color, SkyConfig[SkyConfig_sun_light_intensity]);
 
     #debug concat("Sun_light: _sun_color=<", vstr(3, _sun_color, ",", 0, 3), ">\n")
-    #debug concat("Sun_light: _sun_pos=<", vstr(3, _sun_pos, ",", 0, 3), ">\n") 
+    #debug concat("Sun_light: _sun_pos=<", vstr(3, _sun_pos, ",", 0, 3), ">\n")
+    #debug concat("Sun_light: _sun_axis=<", vstr(3, _sun_axis, ",", 0, 3), ">\n") 
     light_source {
         <0,0,0>
         #ifdef (Use_Simple_Color)
@@ -333,8 +346,10 @@ T
             point_at <0, 0, -Distance>
             #end
             #if (SkyConfig[SkyConfig_sun_area_light] > 1)
-            area_light x*_sun_arc_radius,y*_sun_arc_radius,SkyConfig[SkyConfig_sun_area_light],SkyConfig[SkyConfig_sun_area_light]
-            jitter
+            area_light x*_sun_radius,y*_sun_radius,SkyConfig[SkyConfig_sun_area_light],SkyConfig[SkyConfig_sun_area_light]
+            #if (SkyConfig[SkyConfig_sun_jitter])
+            jitter                           
+            #end
             adaptive 0
             orient circular
             #end

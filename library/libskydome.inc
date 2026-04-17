@@ -56,6 +56,8 @@
 #declare SkyConfig_sun_light_intensity      = 11;
 #declare SkyConfig_sun_area_light           = 12;
 #declare SkyConfig_sun_parallel_light       = 13;
+#declare SkyConfig_sun_jitter               = 14;
+#declare SkyConfig_size                     = 15;
 
 #declare SkyConfig_Turbidity_Pure               = 1.0;
 #declare SkyConfig_Turbidity_ExceptionallyClear = 1.2;
@@ -74,7 +76,7 @@
 #declare _SkyConfig_default_min_vertices    = 12+60;
 #declare _SkyConfig_default_max_faces       = 0; //20+4/3*(_SkyConfig_default_max_vertices-12)+1;
 #macro SkyConfig_create()
-    #local _result  = array[14]{
+    #local _result  = array[SkyConfig_size]{
         0.75,       // intensity multiplier
         2.0,        // sun weight (was 2.0, but I am using 4.0)
         1.0,        // zenith weight
@@ -88,6 +90,7 @@
         _SkyConfig_default_max_faces,
         6,
         1,
+        false,
         false
     };
 _result    
@@ -115,6 +118,7 @@ _result
     #debug concat("\t_sun_light_intensity=", str(SkyConfig[SkyConfig_sun_light_intensity], 0, 3), "\n")
     #debug concat("\t_sun_area_light=", str(SkyConfig[SkyConfig_sun_area_light], 0, 0), "\n")
     #debug concat("\t_sun_parallel_light=", str(SkyConfig[SkyConfig_sun_parallel_light], 0, 3), "\n")
+    #debug concat("\t_sun_jitter=", str(SkyConfig[SkyConfig_sun_jitter], 0, 0), "\n")
 #end
 
 // End SkyConfig_dump
@@ -126,8 +130,8 @@ _result
 // Create a new SkyConfig copying the values from the given SkyConfig
 //                                                                             
 #macro SkyConfig_copy(SkyConfig)
-    #local _result  = array[11];
-    #for (i, 0, 10, 1)
+    #local _result  = array[SkyConfig_size];
+    #for (i, 0, SkyConfig_size-1, 1)
         #local _result[i]   = SkyConfig[i];
     #end
 _result    
