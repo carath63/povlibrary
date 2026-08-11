@@ -322,6 +322,60 @@
 //=============================================================================
 
 //=============================================================================
+// Iso_capped_torus()
+//      returns function(x,y,z,major,minor,ang)
+//
+// Iso_fixed_capped_torus(Major,Minor,Angle)
+//      returns function(x,y,z)
+//
+// Adapted from wgsl-fns library dekoolecentrale.nl
+//
+
+//-----------------------------------------------------------------------------
+// Iso_capped_torus()
+//
+#macro Iso_capped_torus()
+    #local _ict_capped_torus_fn = function(qx,qy,qz,major,minor,k) {
+        sqrt(
+            Iso_dot2_3d(qx,qy,qz)
+            + major*major
+            - 2.0*major*k
+        )
+        - minor
+    }
+    #local _ict_ctaux1_fn   = function(qx,qy,qz,sa,ca,major,minor) {
+        _ict_capped_torus_fn(qx,qy,qz,major,minor,
+            select(sa*qy - ca*qx,
+                Iso_dot_2d(qx,qy,sa,ca),
+                Iso_length_2d(qx,qy)
+            )
+        )           
+    }
+    function(x,y,z,major,minor,ang) {
+        _ict_ctaux1_fn(abs(x),y,z,sin(ang),cos(ang),major,minor)
+    }
+#end
+
+// End Iso_capped_torus
+//-----------------------------------------------------------------------------
+
+//-----------------------------------------------------------------------------
+// Iso_fixed_capped_torus(Major,Minor,Angle)
+//
+#macro Iso_fixed_capped_torus(Major,Minor,Angle)
+    #local _ifct_capped_torus_fn    = Iso_capped_torus()
+    function(x,y,z) {
+        _ifct_capped_torus_fn(x,y,z,Major,Minor,Angle)
+    }    
+#end
+
+// End Iso_fixed_capped_torus
+//-----------------------------------------------------------------------------
+
+// End Iso_capped_torus
+//=============================================================================
+
+//=============================================================================
 // Iso_infinite_cylinder()
 //      returns function(x,y,z,r) for the distance of a point from an
 // infinite cylinder along the y axis with radius r.
